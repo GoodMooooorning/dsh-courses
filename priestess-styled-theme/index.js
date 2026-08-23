@@ -170,3 +170,5 @@ function mount(ctx, config = {}) {
 export function apply(ctx, config = {}) {
   ctx.effect(() => mount(ctx, config), 'priestess-styled-theme: web routes')
 }
+
+export { inject, name };

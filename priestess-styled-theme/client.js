@@ -19,26 +19,6 @@ window.__ModuleLoader__.load({
 		var React = require("react");
 		var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef;
 
-		/* host-provided configuration (settings page), applied after boot */
-		var cfg = { enabled: true, target: "deepseek_workspace" };
-		var cfgLoaded = false;
-		function loadConfig() {
-			try {
-				fetch(CONFIG_URL, { cache: "no-store" })
-					.then(function (res) { return res.ok ? res.json() : null; })
-					.then(function (value) {
-						if (!value) return;
-						cfg = value;
-						cfgLoaded = true;
-						window.__akConfig = value;
-						if (value.target) TARGET = value.target;
-						window.__akTarget = TARGET;
-						evaluate();
-					})
-					.catch(function () { /* host config unavailable — keep defaults */ });
-			} catch (e) { /* fetch unavailable */ }
-		}
-
 		var apply = (ctx) => {
 			if (window.__arknightsThemeLoaded) return;
 			window.__arknightsThemeLoaded = true;
@@ -506,6 +486,24 @@ window.__ModuleLoader__.load({
 				setTheme(decide());
 			}
 
+			/* ---------------- host configuration (settings page) ---------------- */
+			var cfg = { enabled: true, target: "deepseek_workspace" };
+			function loadConfig() {
+				try {
+					fetch(CONFIG_URL, { cache: "no-store" })
+						.then(function (res) { return res.ok ? res.json() : null; })
+						.then(function (value) {
+							if (!value) return;
+							cfg = value;
+							window.__akConfig = value;
+							if (value.target) TARGET = value.target;
+							window.__akTarget = TARGET;
+							evaluate();
+						})
+						.catch(function () { /* host config unavailable — keep defaults */ });
+				} catch (e) { /* fetch unavailable */ }
+			}
+
 			var observer = null;
 			function startObserver() {
 				if (observer) return;
@@ -555,7 +553,6 @@ window.__ModuleLoader__.load({
 			};
 		};
 
-		exports.default = apply;
 		exports.apply = apply;
 		exports.name = name;
 		exports.inject = inject;
