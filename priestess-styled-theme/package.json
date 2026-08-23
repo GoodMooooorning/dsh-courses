@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "普瑞塞斯 · 源石协议 — Arknights (Priestess/Originium) theme for DSH Web, plugin form. Workspace-scoped; survives dsh updates.",
   "type": "module",
-  "main": "lib/index.js",
+  "main": "./index.js",
   "exports": {
-    ".": "./lib/index.js",
-    "./client": "./lib/client.js",
+    ".": "./index.js",
+    "./client": "./client.js",
     "./package.json": "./package.json"
   },
   "dsh": {
