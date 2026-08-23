@@ -37,14 +37,11 @@ window.__ModuleLoader__.load({
 			} catch (e) { /* no URL API */ }
 			window.__akTarget = TARGET;
 
-			/* ---------------- force switch (manual override) ----------------
+			/* ---------------- force switch (session-level override) ----------------
 			   URL ?ak=1 -> force ON    ?ak=0 -> force OFF
-			   localStorage 'ak-force' = '1' | '0' */
+			   （仅本页会话有效；正式开关在 设置 → 插件 的「主题开关」，
+			     localStorage 'ak-force' 旧机制已移除，避免压住设置页开关） */
 			var force = null;
-			try {
-				var stored = window.localStorage && window.localStorage.getItem("ak-force");
-				if (stored === "1" || stored === "0") force = stored === "1";
-			} catch (e) { /* localStorage unavailable */ }
 			try {
 				var q = new URLSearchParams(window.location.search);
 				if (q.get("ak") === "1") force = true;
