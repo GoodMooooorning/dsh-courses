@@ -22,7 +22,7 @@ window.__ModuleLoader__.load({
 			/* ---------------- configuration ---------------- */
 			/* 目标工作区名：可被 URL 参数 ?aktarget=xxx 或
 			   localStorage['ak-target'] 覆盖（分享给他人时无需改代码） */
-			var TARGET = "betterui";
+			var TARGET = "deepseek_workspace";
 			try {
 				var lsTarget = window.localStorage && window.localStorage.getItem("ak-target");
 				if (lsTarget) TARGET = lsTarget;
