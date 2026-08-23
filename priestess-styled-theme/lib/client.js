@@ -585,24 +585,35 @@ window.__ModuleLoader__.load({
 				"saveFailed": "Save failed"
 			};
 
-			/* 注册设置卡片（设置 → 插件）——可选增强，依赖 react + settingsScope + slots + locale。
-			   任一缺失（旧版 dsh）则整体跳过，主题核心功能不受影响。 */
+			/* 注册设置卡片（设置 → 插件）——可选增强，依赖 react + slots + locale + settingsScope。
+			   这些服务在启动早期可能尚未就绪（尤其第三方插件加载较早时），这里轮询等待它们
+			   全部可用后再注册卡片，避免卡片因时机问题缺失；主题核心功能始终不受影响。 */
 			var cardController = null;
-			try {
-				var slotsSvc = ctx.get("slots");
-				var localeSvc = ctx.get("locale");
-				if (React === null) {
-					console.info("[priestess-styled-theme] react 模块不可用，跳过设置卡片（主题核心照常）");
-				} else if (!slotsSvc || !localeSvc || scope === null) {
-					console.info("[priestess-styled-theme] slots/locale/settingsScope 服务不可用，跳过设置卡片（主题核心照常）");
-				} else {
+			var regTries = 0;
+			function tryRegisterCard() {
+				try {
+					regTries++;
+					if (React === null) {
+						console.info("[priestess-styled-theme] react 模块不可用，跳过设置卡片（主题核心照常）");
+						return;
+					}
+					var slotsSvc = ctx.get("slots");
+					var localeSvc = ctx.get("locale");
+					var settingsSvc = ctx.get("settingsScope");
+					if (!slotsSvc || !localeSvc || !settingsSvc) {
+						/* 服务尚未就绪，稍后重试（最多约 10 秒） */
+						if (regTries < 50) setTimeout(tryRegisterCard, 200);
+						else console.info("[priestess-styled-theme] 设置卡片依赖服务超时未就绪，跳过（主题核心照常）");
+						return;
+					}
+					if (scope === null) {
+						try { scope = settingsSvc.bind({ namespace: SETTINGS_NS }); } catch (e) { /* ignore */ }
+					}
+					try { cardController = makeCardController(scope); }
+					catch (err) { console.error("[priestess-styled-theme] card controller failed:", err); }
+					if (cardController === null) return;
 					ctx.effect(function () { return localeSvc.register(SETTINGS_NS, { zh: LOCALE_ZH, en: LOCALE_EN }); }, "priestess-styled-theme: settings locale");
 					slotsSvc.inject("settings.plugin.item", function* () {
-						if (cardController === null) {
-							try { cardController = makeCardController(scope); }
-							catch (err) { console.error("[priestess-styled-theme] card controller failed:", err); }
-						}
-						if (cardController === null) return;
 						yield slotsSvc.register({
 							name: "settings.plugin.item",
 							key: SETTINGS_NS,
@@ -610,12 +621,13 @@ window.__ModuleLoader__.load({
 							inject: function () { return cardController.inject(); }
 						}, ArknightsCard);
 					});
+					window.__akDebug = window.__akDebug || {};
+					window.__akDebug.cardRegistered = true;
+				} catch (e) {
+					console.error("[priestess-styled-theme] settings card registration failed:", e);
 				}
-				window.__akDebug = window.__akDebug || {};
-				window.__akDebug.cardRegistered = cardController !== null;
-			} catch (e) {
-				console.error("[priestess-styled-theme] settings card registration failed:", e);
 			}
+			tryRegisterCard();
 
 			/* ---------------- evaluation loop ---------------- */
 			function evaluate() {
@@ -664,9 +676,8 @@ window.__ModuleLoader__.load({
 			};
 		};
 
-		/* 兼容新旧 dsh：同时导出 default（旧 runner 的函数形式）与 apply（新 runner 的对象形式）。
-		   inject 已为空数组，函数形式丢失 inject 也无影响（核心功能零依赖）。 */
-		exports.default = apply;
+		/* 对象形式导出（不要导出 default 函数）：runner 会将函数形式视为"无 inject 声明"，
+		   导致 settingsScope/locale/slots 依赖全部不可用。旧 dsh 兼容由 react 惰性加载保证。 */
 		exports.apply = apply;
 		exports.name = name;
 		exports.inject = inject;
