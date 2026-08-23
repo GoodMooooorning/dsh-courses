@@ -1,6 +1,6 @@
 {
   "name": "priestess-styled-theme",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "普瑞塞斯 · 源石协议 — Arknights (Priestess/Originium) theme for DSH Web, plugin form. Workspace-scoped; survives dsh updates.",
   "type": "module",
   "main": "lib/index.js",
@@ -12,7 +12,14 @@
   "dsh": {
     "client": {
       "platform": "web",
-      "immediately": true
+      "immediately": true,
+      "inject": [
+        "slots",
+        "locale",
+        "connection",
+        "remote",
+        "settingsScope"
+      ]
     }
   },
   "license": "MIT"

@@ -12,8 +12,13 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 
 		var name = "priestess-styled-theme";
-		var inject = [];
+		/* 依赖注入：settingsScope（设置绑定）/ slots（设置卡片）/ locale（文案）/
+		   connection + remote（host 设置传输） */
+		var inject = ["slots", "locale", "connection", "remote", "settingsScope"];
 		var ASSET = "/arknights-assets/";
+		/* 设置命名空间：settings.yaml 中 arknights-theme: 节 */
+		var SETTINGS_NS = "arknights-theme";
+		var React = require("react");
 
 		var apply = (ctx) => {
 			if (window.__arknightsThemeLoaded) return;
@@ -51,6 +56,11 @@ window.__ModuleLoader__.load({
 			/* ---------------- state ---------------- */
 			var enabled = false;
 			var dataReady = false;
+			/* 设置页配置（settings 命名空间 arknights-theme）：
+			   mode: auto | all-on | all-off | current-off */
+			var cfgMode = null;
+			var cfgExcluded = [];
+			var lastActiveWorkspace = null; // 最近一次检测到的活动工作区名
 			var cwdBySession = {};
 			var titleBySession = {};
 			var basenameToSessions = {};
@@ -188,9 +198,28 @@ window.__ModuleLoader__.load({
 			}
 
 			/* ---------------- decision ---------------- */
+			/* 解析当前活动会话所属工作区名（无则 null） */
+			function resolveActiveWorkspace() {
+				var center = centerColumn();
+				var activeTitle = readActiveTitle(center);
+				var heroLabel = readHeroLabel(center);
+				var candidates = [];
+				if (activeTitle) candidates.push(activeTitle);
+				if (heroLabel) candidates.push(heroLabel);
+				for (var i = 0; i < candidates.length; i++) {
+					var n = norm(candidates[i]);
+					if (!n) continue;
+					var ids = titleToSessions[n] || basenameToSessions[n];
+					if (ids && ids.length && cwdBySession[ids[0]]) {
+						return norm(basename(cwdBySession[ids[0]]));
+					}
+				}
+				return null;
+			}
 			function decide() {
-				if (force !== null) return force;
-				if (!dataReady) return false;
+				if (force !== null) return force; // 手动覆盖（?ak / localStorage）优先
+				if (cfgMode === "all-on") return true;
+				if (cfgMode === "all-off") return false;
 				var center = centerColumn();
 				var activeTitle = readActiveTitle(center);
 				var heroLabel = readHeroLabel(center);
@@ -203,9 +232,13 @@ window.__ModuleLoader__.load({
 					var ids = titleToSessions[n] || basenameToSessions[n];
 					if (ids && ids.length) {
 						var cwd = cwdBySession[ids[0]];
-						return cwd != null && norm(basename(cwd)) === TARGET;
+						var ws = cwd != null ? norm(basename(cwd)) : null;
+						if (ws) { lastActiveWorkspace = ws; window.__akLastWorkspace = ws; }
+						/* current-off：当前工作区在排除列表则关闭，否则按目标检测 */
+						if (cfgMode === "current-off" && ws && cfgExcluded.indexOf(ws) !== -1) return false;
+						return cwd != null && ws === TARGET;
 					}
-					if (n === TARGET) return true;
+					if (n === TARGET) { lastActiveWorkspace = TARGET; window.__akLastWorkspace = TARGET; return true; }
 				}
 				return false;
 			}
@@ -381,6 +414,194 @@ window.__ModuleLoader__.load({
 				window.__akParticles = { start: start, stop: stop };
 			}
 
+			/* ================ 设置页集成（设置 → 插件 → 普瑞塞斯主题） ================ */
+			var scope = null;
+			var scopeUnsub = null;
+			try {
+				scope = ctx.settingsScope.bind({ namespace: SETTINGS_NS });
+				scopeUnsub = scope.subscribe(function () {
+					var snap = scope.getSnapshot();
+					var value = (snap && snap.value) || {};
+					cfgMode = typeof value.mode === "string" ? value.mode : null;
+					cfgExcluded = Array.isArray(value.excluded) ? value.excluded : [];
+					evaluate();
+				});
+				var initSnap = scope.getSnapshot();
+				var initVal = (initSnap && initSnap.value) || {};
+				cfgMode = typeof initVal.mode === "string" ? initVal.mode : null;
+				cfgExcluded = Array.isArray(initVal.excluded) ? initVal.excluded : [];
+			} catch (e) {
+				console.error("[priestess-styled-theme] settingsScope.bind failed:", e);
+				window.__akDebug = window.__akDebug || {};
+				window.__akDebug.scopeError = String(e && e.message || e);
+			}
+
+			/* 卡片控制器：暂存模式 + 保存到设置文档 */
+			function makeCardController(scopeRef) {
+				var listeners = [];
+				var staged = null;
+				/* 不可变快照：getSnapshot 必须返回稳定引用（React useSyncExternalStore 要求），
+				   内容变化时整体替换，否则会触发无限重渲染（React #185） */
+				var snapshot = { mode: "auto", dirty: false, saving: false, failed: false, writable: true };
+				var store = {
+					subscribe: function (cb) { listeners.push(cb); return function () { listeners = listeners.filter(function (l) { return l !== cb; }); }; },
+					getSnapshot: function () { return snapshot; }
+				};
+				function publish() { for (var i = 0; i < listeners.length; i++) listeners[i](); }
+				function set(patch) { snapshot = Object.assign({}, snapshot, patch); publish(); }
+				function refresh() {
+					var snap = scopeRef.getSnapshot();
+					var value = (snap && snap.value) || {};
+					set({
+						mode: typeof value.mode === "string" ? value.mode : "auto",
+						writable: !snap || snap.writable !== false
+					});
+				}
+				function stageMode(mode) { staged = mode; set({ mode: mode, dirty: true }); }
+				function save() {
+					if (!snapshot.dirty || snapshot.saving) return;
+					set({ saving: true, failed: false });
+					var mode = staged !== null ? staged : snapshot.mode;
+					var ops = [];
+					if (mode === "current-off" && window.__akLastWorkspace) {
+						ops.push(scopeRef.set("mode", "current-off").then(function () {
+							return scopeRef.set("excluded", [window.__akLastWorkspace]);
+						}));
+					} else if (mode === "auto") {
+						ops.push(scopeRef.unset("mode").catch(function () {}).then(function () {
+							return scopeRef.unset("excluded").catch(function () {});
+						}));
+					} else {
+						ops.push(scopeRef.set("mode", mode));
+					}
+					Promise.all(ops)
+						.then(function () { staged = null; set({ saving: false, dirty: false }); })
+						.catch(function () { set({ saving: false, failed: true }); });
+				}
+				function discard() { staged = null; set({ dirty: false }); refresh(); }
+				refresh();
+				scopeRef.subscribe(refresh);
+				return {
+					/* 注入给卡片组件的 props：hooks -> useArknightsCard，actions -> stageMode/save/discard */
+					inject: function () {
+						return {
+							hooks: { arknightsCard: store },
+							stageMode: stageMode,
+							save: save,
+							discard: discard
+						};
+					}
+				};
+			}
+
+			/* 卡片组件（React 手写，自包含样式） */
+			var CARD_STYLE = {
+				card: { border: "1px solid rgba(190,168,255,0.16)", background: "rgba(19,24,41,0.7)", borderRadius: "12px", padding: "0", listStyle: "none", marginBottom: "8px" },
+				header: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", padding: "12px 14px", background: "transparent", border: "none", cursor: "pointer", color: "var(--dsw-alias-label-primary)", textAlign: "left" },
+				title: { fontWeight: 600, fontSize: "14px" },
+				badge: { fontSize: "11px", color: "#d9b36c" },
+				body: { padding: "0 14px 12px", display: "flex", flexDirection: "column", gap: "6px" },
+				row: { display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", padding: "3px 0", cursor: "pointer" },
+				hint: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)", lineHeight: 1.5 },
+				actions: { display: "flex", gap: "8px", marginTop: "10px" },
+				btn: { padding: "5px 12px", borderRadius: "8px", border: "1px solid rgba(190,168,255,0.2)", background: "rgba(139,92,246,0.18)", color: "var(--dsw-alias-label-primary)", cursor: "pointer", fontSize: "13px" },
+				btnPrimary: { padding: "5px 12px", borderRadius: "8px", border: "none", background: "#7c5cff", color: "#fff", cursor: "pointer", fontSize: "13px" },
+				fail: { fontSize: "12px", color: "#fb5c7a" }
+			};
+			function ArknightsCard(props) {
+				var state = props.useArknightsCard(function (s) { return s; });
+				var t = props.t;
+				var openState = React.useState(false);
+				var open = openState[0];
+				var setOpen = openState[1];
+				var MODES = [
+					{ id: "auto", label: t("modeAuto") },
+					{ id: "current-off", label: t("modeCurrentOff") },
+					{ id: "all-on", label: t("modeAllOn") },
+					{ id: "all-off", label: t("modeAllOff") }
+				];
+				return React.createElement("li", { style: CARD_STYLE.card },
+					React.createElement("button", { type: "button", style: CARD_STYLE.header, onClick: function () { setOpen(!open); } },
+						React.createElement("span", { style: CARD_STYLE.title }, t("title")),
+						state.dirty ? React.createElement("span", { style: CARD_STYLE.badge }, t("unsaved")) : null
+					),
+					open ? React.createElement("div", { style: CARD_STYLE.body },
+						MODES.map(function (m) {
+							return React.createElement("label", { key: m.id, style: CARD_STYLE.row },
+								React.createElement("input", { type: "radio", name: "ak-mode", checked: state.mode === m.id, onChange: function () { props.stageMode(m.id); } }),
+								m.label
+							);
+						}),
+						React.createElement("p", { style: CARD_STYLE.hint }, t("currentWorkspace") + ": " + (window.__akLastWorkspace || "-")),
+						React.createElement("p", { style: CARD_STYLE.hint }, t("uninstallHint")),
+						state.failed ? React.createElement("p", { style: CARD_STYLE.fail, role: "status" }, t("saveFailed")) : null,
+						React.createElement("div", { style: CARD_STYLE.actions },
+							React.createElement("button", { type: "button", style: CARD_STYLE.btn, disabled: !state.dirty || state.saving, onClick: props.discard }, t("discard")),
+							React.createElement("button", { type: "button", style: CARD_STYLE.btnPrimary, disabled: !state.dirty || state.saving, onClick: props.save }, t("save"))
+						)
+					) : null
+				);
+			}
+
+			/* 文案 */
+			var LOCALE_ZH = {
+				"settings.title": "普瑞塞斯主题",
+				"settings.description": "普瑞塞斯 · 源石协议 主题插件",
+				"title": "普瑞塞斯主题",
+				"modeAuto": "自动（仅目标工作区）",
+				"modeCurrentOff": "关闭当前工作区",
+				"modeAllOn": "全部应用（所有工作区）",
+				"modeAllOff": "全部关闭",
+				"currentWorkspace": "当前工作区",
+				"uninstallHint": "卸载：在插件目录运行 .\\manage.ps1 uninstall 后重启 dsh",
+				"save": "保存",
+				"discard": "放弃",
+				"unsaved": "未保存",
+				"saveFailed": "保存失败"
+			};
+			var LOCALE_EN = {
+				"settings.title": "Priestess Theme",
+				"settings.description": "Priestess · Originium theme plugin",
+				"title": "Priestess Theme",
+				"modeAuto": "Auto (target workspace only)",
+				"modeCurrentOff": "Disable in current workspace",
+				"modeAllOn": "Apply everywhere",
+				"modeAllOff": "Disable everywhere",
+				"currentWorkspace": "Current workspace",
+				"uninstallHint": "Uninstall: run .\\manage.ps1 uninstall in the plugin folder, then restart dsh",
+				"save": "Save",
+				"discard": "Discard",
+				"unsaved": "Unsaved",
+				"saveFailed": "Save failed"
+			};
+
+			/* 注册设置卡片（设置 → 插件） */
+			var cardController = null;
+			try {
+				ctx.effect(function () { return ctx.locale.register(SETTINGS_NS, { zh: LOCALE_ZH, en: LOCALE_EN }); }, "priestess-styled-theme: settings locale");
+				ctx.slots.inject("settings.plugin.item", function* () {
+					if (cardController === null) {
+						if (scope !== null) {
+							try { cardController = makeCardController(scope); }
+							catch (err) { console.error("[priestess-styled-theme] card controller failed:", err); }
+						} else {
+							console.error("[priestess-styled-theme] card not registered: settings scope unavailable");
+						}
+					}
+					if (cardController === null) return;
+					yield ctx.slots.register({
+						name: "settings.plugin.item",
+						key: SETTINGS_NS,
+						locale: SETTINGS_NS,
+						inject: function () { return cardController.inject(); }
+					}, ArknightsCard);
+				});
+				window.__akDebug = window.__akDebug || {};
+				window.__akDebug.cardRegistered = cardController !== null;
+			} catch (e) {
+				console.error("[priestess-styled-theme] settings card registration failed:", e);
+			}
+
 			/* ---------------- evaluation loop ---------------- */
 			function evaluate() {
 				setTheme(decide());
@@ -423,11 +644,14 @@ window.__ModuleLoader__.load({
 				clearInterval(sessionTimer);
 				clearInterval(fitTimer);
 				if (observer) observer.disconnect();
+				if (scopeUnsub) try { scopeUnsub(); } catch (e) { /* ignore */ }
 				if (ws) { try { ws.close(); } catch (e) { /* ignore */ } }
 			};
 		};
 
-		exports.default = apply;
+		/* 注意：不要导出 default 函数——runner 会将函数形式视为"无 inject 声明"，
+		   导致 settingsScope/locale 等依赖服务全部不可用。
+		   用对象形式（exports.apply + exports.inject + exports.name）保证依赖注入。 */
 		exports.apply = apply;
 		exports.name = name;
 		exports.inject = inject;

@@ -5,9 +5,19 @@
    ========================================================================== */
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
+import { settingsNamespace } from "@deepseek-ai/dsh-settings";
+import z from "@deepseek-ai/schemastery";
 
-const name = "arknights-theme-client";
+const name = "priestess-styled-theme";
 const inject = ["webServer"];
+
+/** 设置命名空间：settings.yaml 中的 arknights-theme: 节 */
+const SETTINGS_NS = settingsNamespace("arknights-theme");
+/** 主题控制 schema：mode = auto | all-on | all-off | current-off；excluded = 排除的工作区名 */
+const ThemeSettingsSchema = z.object({
+  mode: z.string().default("auto"),
+  excluded: z.array(String).default([])
+});
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -17,6 +27,10 @@ const MIME = {
 };
 
 function apply(ctx, config) {
+  /* 注册设置命名空间（可选 settings 服务），使「设置 → 插件」卡片可写 */
+  ctx.inject(["settings"], (settingsCtx) => {
+    settingsCtx.settings.register(SETTINGS_NS, ThemeSettingsSchema);
+  });
   const assetsDir = new URL("./assets/", import.meta.url);
   ctx.effect(() => ctx.webServer.register({
     kind: "prefix",
