@@ -2,7 +2,13 @@
    普瑞塞斯 · 源石协议 — Arknights theme client plugin (hand-written bundle)
    Loaded by the DSH browser module loader as an enabled Loader entry.
    Injects the theme stylesheet + artwork from the host half (/arknights-assets)
-   while the ACTIVE session belongs to the "betterui" workspace.
+   while the ACTIVE session's workspace matches the configured target.
+
+   Workspace detection uses the client `sessions` service (current selection
+   from the session ledger) instead of the old nav-button DOM probing, which
+   no longer matches current dsh web UI structure. Settings (enabled switch +
+   target workspace) live in the settings page card and the host config
+   endpoint; no URL parameters.
    ========================================================================== */
 window.__ModuleLoader__.load({
 	id: "priestess-styled-theme",
@@ -12,41 +18,26 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 
 		var name = "priestess-styled-theme";
-		var inject = [];
+		var inject = ["slots", "sessions"];
 		var ASSET = "/arknights-assets/";
+		var CONFIG_URL = "/plugins/priestess-styled-theme/config";
+		var CONFIG_EVENT = "priestess-styled-theme:config";
+		var React = require("react");
+		var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef;
 
 		var apply = (ctx) => {
 			if (window.__arknightsThemeLoaded) return;
 			window.__arknightsThemeLoaded = true;
 
 			/* ---------------- configuration ---------------- */
-			/* 目标工作区名：可被 URL 参数 ?aktarget=xxx 或
-			   localStorage['ak-target'] 覆盖（分享给他人时无需改代码） */
-			var TARGET = "betterui";
+			/* 目标工作区名：默认 deepseek_workspace；可被配置页「目标工作区」或
+			   localStorage['ak-target'] 覆盖（兼容旧设置，优先级低于配置页） */
+			var TARGET = "deepseek_workspace";
 			try {
 				var lsTarget = window.localStorage && window.localStorage.getItem("ak-target");
 				if (lsTarget) TARGET = lsTarget;
 			} catch (e) { /* localStorage unavailable */ }
-			try {
-				var qt = new URLSearchParams(window.location.search);
-				if (qt.get("aktarget")) TARGET = qt.get("aktarget");
-			} catch (e) { /* no URL API */ }
 			window.__akTarget = TARGET;
-
-			/* ---------------- force switch (manual override) ----------------
-			   URL ?ak=1 -> force ON    ?ak=0 -> force OFF
-			   localStorage 'ak-force' = '1' | '0' */
-			var force = null;
-			try {
-				var stored = window.localStorage && window.localStorage.getItem("ak-force");
-				if (stored === "1" || stored === "0") force = stored === "1";
-			} catch (e) { /* localStorage unavailable */ }
-			try {
-				var q = new URLSearchParams(window.location.search);
-				if (q.get("ak") === "1") force = true;
-				else if (q.get("ak") === "0") force = false;
-			} catch (e) { /* no URL API */ }
-			window.__akForce = force;
 
 			/* ---------------- state ---------------- */
 			var enabled = false;
@@ -57,6 +48,8 @@ window.__ModuleLoader__.load({
 			var titleToSessions = {};
 			var ws = null;
 			var decorationsMounted = false;
+			var sessionsSvc = null;
+			try { sessionsSvc = ctx.sessions; } catch (e) { /* sessions service unavailable */ }
 
 			/* ---------------- helpers ---------------- */
 			function norm(s) {
@@ -142,10 +135,29 @@ window.__ModuleLoader__.load({
 					ws.addEventListener("close", function () {
 						setTimeout(openMux, 5000);
 					});
-				} catch (e) { /* WebSocket unavailable — DOM-only detection still works */ }
+				} catch (e) { /* WebSocket unavailable — sessions service still works */ }
 			}
 
-			/* ---------------- DOM signals ---------------- */
+			/* ---------------- workspace detection (sessions service) ----------------
+			   Preferred path: the client session ledger knows the CURRENTLY selected
+			   session (sessions.list.getSnapshot().current); its cwd basename is the
+			   workspace name. No dependence on UI button structure. */
+			function currentWorkspaceName() {
+				try {
+					if (!sessionsSvc || !sessionsSvc.list) return null;
+					var snap = sessionsSvc.list.getSnapshot();
+					var cur = snap && snap.current;
+					if (!cur) return null;
+					var cwd = null;
+					if (snap.byId && snap.byId[cur]) cwd = snap.byId[cur].cwd;
+					if (!cwd) cwd = cwdBySession[cur];
+					if (!cwd) return null;
+					var b = norm(basename(cwd));
+					return b || null;
+				} catch (e) { return null; }
+			}
+
+			/* ---------------- DOM signals (fallback only) ---------------- */
 			function centerColumn() {
 				var frame = document.querySelector('#root [style*="grid-template-columns"]');
 				if (frame && frame.children && frame.children.length > 1) return frame.children[1];
@@ -189,8 +201,13 @@ window.__ModuleLoader__.load({
 
 			/* ---------------- decision ---------------- */
 			function decide() {
-				if (force !== null) return force;
+				if (cfg.enabled === false) return false;
+				if (cfg.all === true) return true;
 				if (!dataReady) return false;
+				/* preferred: sessions-service workspace detection */
+				var wsName = currentWorkspaceName();
+				if (wsName) return wsName === norm(TARGET);
+				/* fallback: old DOM probing (older dsh web layouts) */
 				var center = centerColumn();
 				var activeTitle = readActiveTitle(center);
 				var heroLabel = readHeroLabel(center);
@@ -252,7 +269,6 @@ window.__ModuleLoader__.load({
 			function mountDecorations() {
 				if (decorationsMounted) return;
 				decorationsMounted = true;
-				// 主题样式表（由 host 端伺服，绝不修改前端 dist）
 				if (!document.querySelector('link[data-plugin="priestess-styled-theme"]')) {
 					var cssLink = document.createElement("link");
 					cssLink.rel = "stylesheet";
@@ -260,17 +276,13 @@ window.__ModuleLoader__.load({
 					cssLink.dataset.plugin = "priestess-styled-theme";
 					document.head.appendChild(cssLink);
 				}
-				// 中间黑幕上的黑紫星河（SVG 矢量）
 				mountImg("ak-river", ASSET + "river.svg");
-				// 左侧：巴别塔完整图像（宽度适配左边栏）
 				mountImg("ak-babel", ASSET + "babel-right.webp");
 				fitBabelWidth();
-				// 右侧：普瑞塞斯（8号）填满右栏
 				mountImg("ak-watermark", ASSET + "priestess-right.webp");
 				setupParticles();
 			}
 
-			/* 巴别塔宽度 = DSH 左边栏宽度（可拖拽，动态跟随） */
 			function fitBabelWidth() {
 				var babel = document.getElementById("ak-babel");
 				if (!babel) return;
@@ -386,6 +398,125 @@ window.__ModuleLoader__.load({
 				setTheme(decide());
 			}
 
+			/* ---------------- host configuration (settings page) ---------------- */
+			var cfg = { enabled: true, all: false, target: "deepseek_workspace" };
+			function loadConfig() {
+				try {
+					fetch(CONFIG_URL, { cache: "no-store" })
+						.then(function (res) { return res.ok ? res.json() : null; })
+						.then(function (value) {
+							if (!value) return;
+							cfg = value;
+							window.__akConfig = value;
+							if (value.target) TARGET = value.target;
+							window.__akTarget = TARGET;
+							evaluate();
+						})
+						.catch(function () { /* host config unavailable — keep defaults */ });
+				} catch (e) { /* fetch unavailable */ }
+			}
+
+			/* ---------------- settings card (settings page) ---------------- */
+			var cardStyle = {
+				listStyle: "none", border: "1px solid var(--border-color, #d8d8d8)", borderRadius: 12,
+				padding: 16, background: "var(--surface-color, transparent)", display: "grid", gap: 12,
+			};
+			var rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 };
+			var textStyle = { flex: 1, minWidth: 0, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border-color, #d8d8d8)", background: "var(--input-color, transparent)" };
+			var targetStyle = { flex: 2, minWidth: 200, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border-color, #d8d8d8)", background: "var(--input-color, transparent)" };
+
+			function Field(props) {
+				return React.createElement("label", { style: rowStyle },
+					React.createElement("span", null,
+						React.createElement("span", { style: { display: "block", fontWeight: 600 } }, props.label),
+						props.hint ? React.createElement("small", { style: { display: "block", opacity: 0.65, marginTop: 2 } }, props.hint) : null),
+					props.children);
+			}
+
+			function SettingsCard() {
+				var state = useState("loading");
+				var status = state[0], setStatus = state[1];
+				var val = useState({});
+				var value = val[0], setValue = val[1];
+				var tgt = useState("");
+				var targetDraft = tgt[0], setTargetDraft = tgt[1];
+				var timers = useRef(new Map());
+				var seq = useRef(0);
+
+				useEffect(function () {
+					var active = true;
+					fetch(CONFIG_URL, { cache: "no-store" })
+						.then(function (res) { return res.ok ? res.json() : null; })
+						.then(function (v) {
+							if (v && active) { setValue(v); setTargetDraft(v.target ?? ""); setStatus("ready"); }
+						})
+						.catch(function () { if (active) setStatus("unavailable"); });
+					return function () {
+						active = false;
+						for (var entry of timers.current.values()) clearTimeout(entry);
+						timers.current.clear();
+					};
+				}, []);
+
+				var patch = function (field, next) {
+					var mine = ++seq.current;
+					var nextValue = Object.assign({}, value, { [field]: next });
+					setValue(nextValue);
+					var pending = timers.current.get(field);
+					if (pending) clearTimeout(pending);
+					timers.current.set(field, setTimeout(function () {
+						timers.current.delete(field);
+						fetch(CONFIG_URL, {
+							method: "PATCH",
+							headers: { "content-type": "application/json" },
+							body: JSON.stringify({ [field]: next }),
+						})
+							.then(async function (response) {
+								if (!response.ok) throw new Error("write failed: " + response.status);
+								var updated = await response.json();
+								if (mine === seq.current) setValue(updated);
+								window.dispatchEvent(new CustomEvent(CONFIG_EVENT));
+							})
+							.catch(function () { if (mine === seq.current) setStatus("unavailable"); });
+					}, 250));
+				};
+
+				var commitTarget = function () {
+					var next = targetDraft.trim();
+					if (next && next !== value.target) patch("target", next);
+					else setTargetDraft(value.target ?? "");
+				};
+
+				var ready = status === "ready";
+				return React.createElement("li", { style: cardStyle, "data-testid": "priestess-styled-theme-settings" },
+					React.createElement("div", null,
+						React.createElement("strong", { style: { fontSize: 16 } }, "普瑞塞斯 · 源石协议 主题"),
+						React.createElement("p", { style: { margin: "4px 0 0", opacity: 0.72 } },
+							"Arknights 主题：黑紫星河、普瑞塞斯与巴别塔视觉。配置即时生效。")),
+					status === "unavailable"
+						? React.createElement("span", { role: "status" }, "设置尚未连接到 DSH Host。")
+						: status === "loading"
+						? React.createElement("span", null, "正在读取设置…")
+						: React.createElement(React.Fragment, null,
+							Field({ label: "主题开关", hint: "关闭后任何工作区都不显示主题，界面完全恢复默认。",
+								children: React.createElement("input", {
+									type: "checkbox", checked: value.enabled !== false, disabled: !ready,
+									onChange: function (event) { patch("enabled", event.target.checked); },
+								}) }),
+							Field({ label: "应用到全部", hint: "开启后忽略「目标工作区」，所有工作区都显示主题。",
+								children: React.createElement("input", {
+									type: "checkbox", checked: value.all === true, disabled: !ready,
+									onChange: function (event) { patch("all", event.target.checked); },
+								}) }),
+							Field({ label: "目标工作区", hint: "仅在该工作区（会话 cwd 目录名）显示主题；「应用到全部」关闭时生效；回车或失焦保存。",
+								children: React.createElement("input", {
+									type: "text", style: targetStyle, value: targetDraft, disabled: !ready,
+									onChange: function (event) { setTargetDraft(event.target.value); },
+									onBlur: commitTarget,
+									onKeyDown: function (event) { if (event.key === "Enter") commitTarget(); },
+								}) })));
+			}
+
 			var observer = null;
 			function startObserver() {
 				if (observer) return;
@@ -397,6 +528,16 @@ window.__ModuleLoader__.load({
 			/* ---------------- boot ---------------- */
 			window.__akDebug = { target: TARGET, enabled: false, refresh: refreshSessions, evaluate: evaluate };
 			document.documentElement.setAttribute("data-arknights-ready", "1");
+			ctx.slots.inject("settings.plugin.item", function* () {
+				yield ctx.slots.register({
+					name: "settings.plugin.item",
+					id: "priestess-styled-theme",
+					order: 40,
+					inject: () => ({}),
+				}, SettingsCard);
+			});
+			window.addEventListener(CONFIG_EVENT, function () { loadConfig(); });
+			loadConfig();
 			refreshSessions();
 			openMux();
 			var bootTimer = setInterval(function () {
@@ -406,7 +547,6 @@ window.__ModuleLoader__.load({
 			var sessionTimer = setInterval(refreshSessions, 20000);
 			startObserver();
 
-			// 巴别塔宽度跟随窗口与左边栏拖拽
 			window.addEventListener("resize", function () { fitBabelWidth(); });
 			var fitTimer = setInterval(function () {
 				var frame = document.querySelector('#root [style*="grid-template-columns"]');
@@ -417,7 +557,6 @@ window.__ModuleLoader__.load({
 				}
 			}, 2000);
 
-			// cordis dispose: stop polling/observers (browser reload covers the rest)
 			return function disposer() {
 				clearInterval(bootTimer);
 				clearInterval(sessionTimer);
@@ -427,7 +566,6 @@ window.__ModuleLoader__.load({
 			};
 		};
 
-		exports.default = apply;
 		exports.apply = apply;
 		exports.name = name;
 		exports.inject = inject;

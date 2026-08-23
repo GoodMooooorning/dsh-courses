@@ -1,9 +1,9 @@
 {
   "name": "priestess-styled-theme",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "普瑞塞斯 · 源石协议 — Arknights (Priestess/Originium) theme for DSH Web, plugin form. Workspace-scoped; survives dsh updates.",
   "type": "module",
-  "main": "lib/index.js",
+  "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
@@ -12,8 +12,13 @@
   "dsh": {
     "client": {
       "platform": "web",
-      "immediately": true
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
     }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
   },
   "license": "MIT"
 }
