@@ -22,8 +22,16 @@ window.__ModuleLoader__.load({
 		var ASSET = "/arknights-assets/";
 		var CONFIG_URL = "/plugins/priestess-styled-theme/config";
 		var CONFIG_EVENT = "priestess-styled-theme:config";
-		var React = require("react");
-		var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef;
+		/* 降级：react 不可用（旧版 dsh 模块表未注册 react）时，设置卡片整体跳过，
+		   主题核心（工作区匹配 + 资源注入）照常工作 */
+		var React = null;
+		var useState = null, useEffect = null, useRef = null;
+		try {
+			React = require("react");
+			useState = React.useState;
+			useEffect = React.useEffect;
+			useRef = React.useRef;
+		} catch (e) { /* react unavailable — settings card skipped */ }
 
 		var apply = (ctx) => {
 			if (window.__arknightsThemeLoaded) return;
@@ -528,15 +536,21 @@ window.__ModuleLoader__.load({
 			/* ---------------- boot ---------------- */
 			window.__akDebug = { target: TARGET, enabled: false, refresh: refreshSessions, evaluate: evaluate };
 			document.documentElement.setAttribute("data-arknights-ready", "1");
-			ctx.slots.inject("settings.plugin.item", function* () {
-				yield ctx.slots.register({
-					name: "settings.plugin.item",
-					id: "priestess-styled-theme",
-					key: "priestess-styled-theme",
-					order: 40,
-					inject: () => ({}),
-				}, SettingsCard);
-			});
+			/* 降级：react 或 slots 服务不可用（旧版 dsh）时跳过设置卡片注册，
+			   主题核心（工作区匹配 + 资源注入）照常；注册失败也不影响主体 */
+			try {
+				if (React && ctx.slots) {
+					ctx.slots.inject("settings.plugin.item", function* () {
+						yield ctx.slots.register({
+							name: "settings.plugin.item",
+							id: "priestess-styled-theme",
+							key: "priestess-styled-theme",
+							order: 40,
+							inject: () => ({}),
+						}, SettingsCard);
+					});
+				}
+			} catch (e) { /* settings card unavailable — theme core unaffected */ }
 			window.addEventListener(CONFIG_EVENT, function () { loadConfig(); });
 			loadConfig();
 			refreshSessions();
