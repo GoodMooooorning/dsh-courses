@@ -532,6 +532,7 @@ window.__ModuleLoader__.load({
 				yield ctx.slots.register({
 					name: "settings.plugin.item",
 					id: "priestess-styled-theme",
+					key: "priestess-styled-theme",
 					order: 40,
 					inject: () => ({}),
 				}, SettingsCard);
