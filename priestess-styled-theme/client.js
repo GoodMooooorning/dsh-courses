@@ -12,8 +12,32 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 
 		var name = "priestess-styled-theme";
-		var inject = [];
+		var inject = ["slots"];
 		var ASSET = "/arknights-assets/";
+		var CONFIG_URL = "/plugins/priestess-styled-theme/config";
+		var CONFIG_EVENT = "priestess-styled-theme:config";
+		var React = require("react");
+		var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef;
+
+		/* host-provided configuration (settings page), applied after boot */
+		var cfg = { enabled: true, target: "deepseek_workspace" };
+		var cfgLoaded = false;
+		function loadConfig() {
+			try {
+				fetch(CONFIG_URL, { cache: "no-store" })
+					.then(function (res) { return res.ok ? res.json() : null; })
+					.then(function (value) {
+						if (!value) return;
+						cfg = value;
+						cfgLoaded = true;
+						window.__akConfig = value;
+						if (value.target) TARGET = value.target;
+						window.__akTarget = TARGET;
+						evaluate();
+					})
+					.catch(function () { /* host config unavailable — keep defaults */ });
+			} catch (e) { /* fetch unavailable */ }
+		}
 
 		var apply = (ctx) => {
 			if (window.__arknightsThemeLoaded) return;
@@ -190,6 +214,7 @@ window.__ModuleLoader__.load({
 			/* ---------------- decision ---------------- */
 			function decide() {
 				if (force !== null) return force;
+				if (cfg.enabled === false) return false;
 				if (!dataReady) return false;
 				var center = centerColumn();
 				var activeTitle = readActiveTitle(center);
@@ -381,6 +406,101 @@ window.__ModuleLoader__.load({
 				window.__akParticles = { start: start, stop: stop };
 			}
 
+			/* ---------------- settings card (settings page) ---------------- */
+			var cardStyle = {
+				listStyle: "none", border: "1px solid var(--border-color, #d8d8d8)", borderRadius: 12,
+				padding: 16, background: "var(--surface-color, transparent)", display: "grid", gap: 12,
+			};
+			var rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 };
+			var textStyle = { flex: 1, minWidth: 0, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border-color, #d8d8d8)", background: "var(--input-color, transparent)" };
+
+			function Field(props) {
+				return React.createElement("label", { style: rowStyle },
+					React.createElement("span", null,
+						React.createElement("span", { style: { display: "block", fontWeight: 600 } }, props.label),
+						props.hint ? React.createElement("small", { style: { display: "block", opacity: 0.65, marginTop: 2 } }, props.hint) : null),
+					props.children);
+			}
+
+			function SettingsCard() {
+				var state = useState("loading");
+				var status = state[0], setStatus = state[1];
+				var val = useState({});
+				var value = val[0], setValue = val[1];
+				var tgt = useState("");
+				var targetDraft = tgt[0], setTargetDraft = tgt[1];
+				var timers = useRef(new Map());
+				var seq = useRef(0);
+
+				useEffect(function () {
+					var active = true;
+					fetch(CONFIG_URL, { cache: "no-store" })
+						.then(function (res) { return res.ok ? res.json() : null; })
+						.then(function (v) {
+							if (v && active) { setValue(v); setTargetDraft(v.target ?? ""); setStatus("ready"); }
+						})
+						.catch(function () { if (active) setStatus("unavailable"); });
+					return function () {
+						active = false;
+						for (var entry of timers.current.values()) clearTimeout(entry);
+						timers.current.clear();
+					};
+				}, []);
+
+				var patch = function (field, next) {
+					var mine = ++seq.current;
+					var nextValue = Object.assign({}, value, { [field]: next });
+					setValue(nextValue);
+					var pending = timers.current.get(field);
+					if (pending) clearTimeout(pending);
+					timers.current.set(field, setTimeout(function () {
+						timers.current.delete(field);
+						fetch(CONFIG_URL, {
+							method: "PATCH",
+							headers: { "content-type": "application/json" },
+							body: JSON.stringify({ [field]: next }),
+						})
+							.then(async function (response) {
+								if (!response.ok) throw new Error("write failed: " + response.status);
+								var updated = await response.json();
+								if (mine === seq.current) setValue(updated);
+								window.dispatchEvent(new CustomEvent(CONFIG_EVENT));
+							})
+							.catch(function () { if (mine === seq.current) setStatus("unavailable"); });
+					}, 250));
+				};
+
+				var commitTarget = function () {
+					var next = targetDraft.trim();
+					if (next && next !== value.target) patch("target", next);
+					else setTargetDraft(value.target ?? "");
+				};
+
+				var ready = status === "ready";
+				return React.createElement("li", { style: cardStyle, "data-testid": "priestess-styled-theme-settings" },
+					React.createElement("div", null,
+						React.createElement("strong", { style: { fontSize: 16 } }, "普瑞塞斯 · 源石协议 主题"),
+						React.createElement("p", { style: { margin: "4px 0 0", opacity: 0.72 } },
+							"Arknights 主题：黑紫星河、普瑞塞斯与巴别塔视觉。配置即时生效。")),
+					status === "unavailable"
+						? React.createElement("span", { role: "status" }, "设置尚未连接到 DSH Host。")
+						: status === "loading"
+						? React.createElement("span", null, "正在读取设置…")
+						: React.createElement(React.Fragment, null,
+							Field({ label: "主题开关", hint: "关闭后任何工作区都不显示主题，界面完全恢复默认。",
+								children: React.createElement("input", {
+									type: "checkbox", checked: value.enabled !== false, disabled: !ready,
+									onChange: function (event) { patch("enabled", event.target.checked); },
+								}) }),
+							Field({ label: "目标工作区", hint: "仅在该工作区（会话 cwd 目录名）显示主题；回车或失焦保存。",
+								children: React.createElement("input", {
+									type: "text", style: textStyle, value: targetDraft, disabled: !ready,
+									onChange: function (event) { setTargetDraft(event.target.value); },
+									onBlur: commitTarget,
+									onKeyDown: function (event) { if (event.key === "Enter") commitTarget(); },
+								}) })));
+			}
+
 			/* ---------------- evaluation loop ---------------- */
 			function evaluate() {
 				setTheme(decide());
@@ -397,6 +517,14 @@ window.__ModuleLoader__.load({
 			/* ---------------- boot ---------------- */
 			window.__akDebug = { target: TARGET, enabled: false, refresh: refreshSessions, evaluate: evaluate };
 			document.documentElement.setAttribute("data-arknights-ready", "1");
+			ctx.slots.inject("settings.plugin.item", () => ctx.slots.register({
+				name: "settings.plugin.item",
+				id: "priestess-styled-theme",
+				order: 40,
+				inject: () => ({}),
+			}, SettingsCard));
+			window.addEventListener(CONFIG_EVENT, function () { loadConfig(); });
+			loadConfig();
 			refreshSessions();
 			openMux();
 			var bootTimer = setInterval(function () {
