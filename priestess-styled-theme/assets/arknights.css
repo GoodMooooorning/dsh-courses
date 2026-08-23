@@ -1,0 +1,399 @@
+/* ==========================================================================
+   普瑞塞斯 · 源石协议 — Arknights (Priestess / Originium) theme for DSH Web
+   Installed by arknights-theme/patch.ps1 into the frontend dist template.
+
+   SCOPE: every rule below is gated behind `html[data-arknights]`, which the
+   runtime (arknights.js) sets ONLY while the active session belongs to the
+   "betterui" workspace. With the attribute absent the UI is 100% stock.
+   ========================================================================== */
+
+/* ---- 1. Palette: deep abyss + originium violet + civilight gold ------- */
+
+html[data-arknights] body,
+html[data-arknights] body[data-ds-dark-theme] {
+  /* backgrounds */
+  --dsw-alias-bg-base: rgba(3, 4, 8, 0.95);
+  --dsw-alias-bg-layer-1: rgba(5, 7, 12, 0.96);
+  --dsw-alias-bg-layer-2: rgba(7, 9, 16, 0.97);
+  --dsw-alias-bg-layer-3: rgba(10, 13, 22, 0.97);
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.5);
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.22);
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.48);
+  --dsw-alias-bg-mask-photo: rgba(2, 3, 8, 0.9);
+  --dsw-alias-bg-mask-drop: rgba(12, 10, 26, 0.72);
+  --dsw-alias-bg-module-platform: rgba(12, 16, 28, 0.92);
+  --dsw-alias-bg-multi-select: rgba(11, 15, 26, 0.95);
+  --dsw-alias-bg-overlay: rgba(26, 33, 56, 0.97);
+  --dsw-alias-bg-skeleton: rgba(167, 139, 250, 0.08);
+
+  /* borders — violet-tinted crystal edges */
+  --dsw-alias-border-inverted2: rgba(190, 168, 255, 0.09);
+  --dsw-alias-border-inverted: rgba(190, 168, 255, 0.06);
+  --dsw-alias-border-l1: rgba(190, 168, 255, 0.1);
+  --dsw-alias-border-l2-darkmode-thin: rgba(190, 168, 255, 0.12);
+  --dsw-alias-border-l2: rgba(190, 168, 255, 0.16);
+  --dsw-alias-border-l3: rgba(190, 168, 255, 0.24);
+  --dsw-alias-border-l4: rgba(217, 179, 108, 0.3);
+
+  /* brand — originium violet / civilight gold */
+  --dsw-alias-brand-primary: #b79cff;
+  --dsw-alias-brand-primary-invert: #0a0d16;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #8b5cf6;
+  --dsw-alias-brand-text: #efe8ff;
+
+  /* buttons */
+  --dsw-alias-button-contrast-fill: #efe8ff;
+  --dsw-alias-button-elevated-fill: rgba(14, 18, 32, 0.94);
+  --dsw-alias-button-floating-fill: rgba(12, 16, 28, 0.94);
+  --dsw-alias-button-floating-hover: rgba(20, 26, 44, 0.96);
+  --dsw-alias-button-ghost-active-border: #6f5db0;
+  --dsw-alias-button-ghost-active-fill: rgba(26, 33, 56, 0.96);
+  --dsw-alias-button-ghost-active-hover: rgba(35, 44, 79, 0.97);
+  --dsw-alias-button-info-fill: #7c5cff;
+  --dsw-alias-button-info-hover: #9677ff;
+  --dsw-alias-button-primary-dimmed: rgba(36, 30, 74, 0.9);
+  --dsw-alias-button-primary-fill: #7c5cff;
+  --dsw-alias-button-primary-hover: #9677ff;
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(139, 92, 246, 0.08);
+  --dsw-alias-button-tool-bar-fill: rgba(139, 92, 246, 0.16);
+  --dsw-alias-button-tool-bar-hover: rgba(139, 92, 246, 0.28);
+
+  /* interactive states */
+  --dsw-alias-interactive-bg-active: rgba(139, 92, 246, 0.24);
+  --dsw-alias-interactive-bg-hover-accent: rgba(139, 92, 246, 0.2);
+  --dsw-alias-interactive-bg-hover-danger: rgba(244, 63, 94, 0.16);
+  --dsw-alias-interactive-bg-hover-solid: rgba(24, 30, 52, 0.97);
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.07);
+
+  /* labels */
+  --dsw-alias-label-caption: #6f6890;
+  --dsw-alias-label-dimmed: #9890b6;
+  --dsw-alias-label-primary-bluish: #d3c8ff;
+  --dsw-alias-label-primary-dimmed: #e8e2ff;
+  --dsw-alias-label-primary-foreground: #0a0d16;
+  --dsw-alias-label-primary-inverted: #0a0d16;
+  --dsw-alias-label-primary: #f1ecff;
+  --dsw-alias-label-secondary: #b9b1d6;
+  --dsw-alias-label-tertiary: #837c9e;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: rgba(19, 24, 41, 0.96);
+  --dsw-alias-markdown-code-block-banner: rgba(17, 22, 42, 0.97);
+  --dsw-alias-markdown-code-block: rgba(10, 13, 26, 0.96);
+  --dsw-alias-markdown-code-segment-selected: rgba(22, 28, 54, 0.98);
+  --dsw-alias-markdown-code-segment-unselected: rgba(10, 13, 26, 0.96);
+  --dsw-alias-markdown-inline-code: rgba(167, 139, 250, 0.16);
+  --dsw-alias-markdown-placeholder: rgba(17, 22, 42, 0.96);
+  --dsw-alias-markdown-tag: rgba(23, 29, 54, 0.97);
+
+  /* scrollbar — originium violet */
+  --dsw-alias-scrollbar-bg-l1: #4a4388;
+  --dsw-alias-scrollbar-bg-l2: #403a74;
+  --dsw-alias-scrollbar-hover-l1: #6f66c4;
+  --dsw-alias-scrollbar-hover-l2: #7d74d6;
+
+  /* states */
+  --dsw-alias-state-business-primary: #8b5cf6;
+  --dsw-alias-state-business-tertiary: rgba(36, 30, 74, 0.9);
+  --dsw-alias-state-error-primary: #fb5c7a;
+  --dsw-alias-state-error-secondary: #ff8ba0;
+  --dsw-alias-state-success-primary: #3dd68c;
+  --dsw-alias-state-success-secondary: #6ee7b7;
+  --dsw-alias-state-success-tertiary: rgba(13, 42, 32, 0.9);
+  --dsw-alias-state-warn-label: #d9b36c;
+  --dsw-alias-state-warn-primary: #e0b34c;
+  --dsw-alias-state-warn-secondary: #eecf8d;
+  --dsw-alias-state-warn-tertiary: rgba(42, 33, 19, 0.9);
+
+  --dsw-alias-toast-bg: rgba(24, 30, 54, 0.98);
+  --dsw-alias-tooltip-bg: rgba(29, 36, 68, 0.99);
+
+  /* sidebar & specific surfaces */
+  --dsw-specific-bubble-highlight: rgba(22, 28, 54, 0.96);
+  --dsw-specific-bubble: rgba(15, 20, 38, 0.92);
+  --dsw-specific-input-major: rgba(13, 18, 34, 0.88);
+  --dsw-specific-login-input: rgba(10, 14, 26, 0.92);
+  --dsw-specific-menu: rgba(19, 24, 41, 0.98);
+  --dsw-specific-selector: rgba(15, 20, 38, 0.96);
+  --dsw-specific-sidebar-fill: rgba(8, 11, 18, 0.82);
+  --dsw-specific-sidebar-nav-item-active-accent: rgba(42, 33, 87, 0.95);
+  --dsw-specific-sidebar-nav-item-active: rgba(25, 31, 60, 0.95);
+  --dsw-specific-sidebar-nav-item-hover: rgba(18, 24, 48, 0.9);
+  --dsw-specific-tip: rgba(17, 22, 42, 0.96);
+}
+
+/* neutral bluish statics that some components read directly */
+html[data-arknights] body,
+html[data-arknights] body[data-ds-dark-theme] {
+  --dsw-static-neutral-bluish-00: #ffffff;
+  --dsw-static-neutral-bluish-50: #efeaff;
+  --dsw-static-neutral-bluish-60: #e9e3ff;
+  --dsw-static-neutral-bluish-75: #dcd4ff;
+  --dsw-static-neutral-bluish-100: #cfc5f7;
+  --dsw-static-neutral-bluish-150: #c2b8ec;
+  --dsw-static-neutral-bluish-200: #b0a6dd;
+  --dsw-static-neutral-bluish-300: #958bc4;
+  --dsw-static-neutral-bluish-400: #7d74a8;
+  --dsw-static-neutral-bluish-500: #6a6292;
+  --dsw-static-neutral-bluish-550: #5a5380;
+  --dsw-static-neutral-bluish-600: #554e7d;
+  --dsw-static-neutral-bluish-700: #463f6b;
+  --dsw-static-neutral-bluish-750: #3a3558;
+  --dsw-static-neutral-bluish-800: #2b2747;
+  --dsw-static-neutral-bluish-850: #211d39;
+  --dsw-static-neutral-bluish-875: #191627;
+  --dsw-static-neutral-bluish-900: #12101f;
+  --dsw-static-neutral-bluish-950: #0d0b18;
+  --dsw-static-neutral-bluish-1000: #07090f;
+
+  --dsw-static-deepseek-50: #efe8ff;
+  --dsw-static-deepseek-100: #e3d8ff;
+  --dsw-static-deepseek-200: #d3c2ff;
+  --dsw-static-deepseek-300: #bda4ff;
+  --dsw-static-deepseek-400: #a78bfa;
+  --dsw-static-deepseek-450: #9a7cf5;
+  --dsw-static-deepseek-500: #8b5cf6;
+  --dsw-static-deepseek-600: #7c4de0;
+  --dsw-static-deepseek-700-delete: #6a3fce;
+  --dsw-static-deepseek-800: #2c2157;
+  --dsw-static-deepseek-900: #1f1740;
+
+  --dsw-static-neutral-00: #ffffff;
+  --dsw-static-neutral-50: #12101f;
+  --dsw-static-neutral-100: #18162a;
+  --dsw-static-neutral-150: #1c1a30;
+  --dsw-static-neutral-200: #211e38;
+  --dsw-static-neutral-250: #262240;
+  --dsw-static-neutral-300: #2b2747;
+  --dsw-static-neutral-400: #554e7d;
+  --dsw-static-neutral-500: #6a6292;
+  --dsw-static-neutral-550: #837c9e;
+  --dsw-static-neutral-600: #9890b6;
+  --dsw-static-neutral-700: #b0a6dd;
+  --dsw-static-neutral-750: #c2b8ec;
+  --dsw-static-neutral-800: #211d39;
+  --dsw-static-neutral-850: #191627;
+  --dsw-static-neutral-900: #0d0b18;
+  --dsw-static-neutral-950: #0a0c14;
+  --dsw-static-neutral-1000: #07090f;
+}
+
+/* ---- 2. Root canvas & fonts ------------------------------------------ */
+
+html[data-arknights] {
+  background-color: #05060c;
+}
+
+html[data-arknights] body {
+  color-scheme: dark;
+  background-color: #07090f;
+  font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC",
+    "Microsoft YaHei UI", "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+}
+
+html[data-arknights] body::before {
+  /* 黑色基底 + 暗紫星空点缀（最上层）+ 紫色流光光晕 */
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url("/arknights-assets/starfield.svg") repeat,
+    radial-gradient(1100px 760px at 82% -10%, rgba(139, 92, 246, 0.18), transparent 62%),
+    radial-gradient(900px 680px at -12% 108%, rgba(139, 92, 246, 0.1), transparent 60%),
+    radial-gradient(760px 520px at 55% 120%, rgba(124, 92, 255, 0.14), transparent 62%),
+    linear-gradient(180deg, #020204 0%, #03040a 50%, #05060f 100%);
+}
+
+/* thin civilight hairline across the very top of the app */
+html[data-arknights] body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 999999;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.9), rgba(217, 179, 108, 0.75), transparent);
+  opacity: 0.85;
+}
+
+/* ---- 3. Side-panel artwork (DOM injected by arknights.js) ----------- */
+
+#ak-watermark,
+#ak-babel,
+#ak-river {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  user-select: none;
+  display: none;
+}
+
+html[data-arknights] #ak-watermark,
+html[data-arknights] #ak-babel,
+html[data-arknights] #ak-river {
+  display: block;
+}
+
+/* 中间/左侧黑幕上的黑紫星河（不侵入右侧普瑞塞斯图区域） */
+html[data-arknights] #ak-river {
+  left: 0;
+  right: min(36vw, 540px);
+  top: 54%;
+  transform: translateY(-50%);
+  z-index: 28;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  filter: saturate(1.1);
+}
+
+#ak-river img {
+  display: block;
+  width: 100%;
+  height: auto;
+  -webkit-user-drag: none;
+}
+
+#ak-watermark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  -webkit-user-drag: none;
+}
+
+#ak-babel img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left bottom;
+  -webkit-user-drag: none;
+}
+
+/* 右侧：普瑞塞斯（8号），宽度适中防放大模糊 */
+html[data-arknights] #ak-watermark {
+  right: 0;
+  top: -9vh;
+  height: calc((100vh - 13vh) * 1.25);
+  width: min(44vw, 660px);
+  opacity: 0.6;
+  mix-blend-mode: screen;
+  filter: saturate(1.06);
+}
+
+/* 左侧：巴别塔完整图像（上部透明露出星河），宽度由 JS 适配左边栏，底部贴网页底部 */
+html[data-arknights] #ak-babel {
+  left: 0;
+  top: -8.75vh;
+  height: calc((100vh - 13vh) * 1.25);
+  width: 280px;
+  opacity: 0.8;
+}
+
+/* floating originium dust canvas */
+#ak-particles {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  pointer-events: none;
+  display: none;
+}
+
+html[data-arknights] #ak-particles {
+  display: block;
+}
+
+@media (max-width: 720px) {
+  html[data-arknights] #ak-watermark { opacity: 0.32; width: min(68vw, 420px); top: -4vh; }
+  html[data-arknights] #ak-babel { opacity: 0.55; width: min(40vw, 260px); top: -4vh; }
+}
+
+/* ---- 4. Selection, focus, scrollbars --------------------------------- */
+
+html[data-arknights] ::selection {
+  background: rgba(139, 92, 246, 0.4);
+  color: #ffffff;
+}
+
+/* 输入光标提亮（亮紫，深色背景上清晰可见） */
+html[data-arknights] * {
+  caret-color: #c4b5fd;
+}
+
+html[data-arknights] textarea,
+html[data-arknights] input,
+html[data-arknights] [contenteditable="true"] {
+  caret-color: #c4b5fd !important;
+}
+
+html[data-arknights] :focus-visible {
+  outline: 1.5px solid rgba(167, 139, 250, 0.9) !important;
+  outline-offset: 1px;
+}
+
+html[data-arknights] *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html[data-arknights] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-arknights] *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5a52a8, #45407e);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html[data-arknights] *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7d74d6, #6f66c4);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html[data-arknights] *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---- 5. Markdown & code flourishes ----------------------------------- */
+
+html[data-arknights] code,
+html[data-arknights] pre code {
+  font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
+}
+
+html[data-arknights] :is(pre, code) {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* links keep a violet-gold underline hint */
+html[data-arknights] a {
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(167, 139, 250, 0.55);
+}
+
+/* ---- 6. Buttons & primary actions ------------------------------------- */
+
+html[data-arknights] button:active {
+  transform: translateY(0.5px);
+}
+
+html[data-arknights] button {
+  transition: background-color 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease;
+}
+
+/* ---- 7. Reduced motion ------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-arknights] #ak-particles { display: none; }
+  html[data-arknights] button {
+    transition: none;
+  }
+}

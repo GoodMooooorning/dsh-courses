@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="shard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2450"/>
+      <stop offset="0.5" stop-color="#121026"/>
+      <stop offset="1" stop-color="#0a0c16"/>
+    </linearGradient>
+    <linearGradient id="crack" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0abfc"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.55">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#7c3aed" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="2.2"/>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#07090f"/>
+  <circle cx="32" cy="30" r="26" fill="url(#glow)"/>
+  <!-- hexagonal originium shard -->
+  <polygon points="32,6 46,21 50,40 32,58 14,40 18,21" fill="url(#shard)" stroke="#5a4f9e" stroke-width="1.2"/>
+  <!-- facets -->
+  <path d="M32 6 L32 58" stroke="#3d3570" stroke-width="0.8" opacity="0.9"/>
+  <path d="M18 21 L46 21" stroke="#3d3570" stroke-width="0.8" opacity="0.7"/>
+  <path d="M14 40 L50 40" stroke="#3d3570" stroke-width="0.8" opacity="0.7"/>
+  <polygon points="32,6 46,21 32,21" fill="#a78bfa" opacity="0.16"/>
+  <polygon points="32,21 46,21 32,40" fill="#e879f9" opacity="0.10"/>
+  <!-- glowing crack -->
+  <path d="M32 10 L33.5 22 L30.5 32 L33 44" stroke="url(#crack)" stroke-width="1.6" fill="none" filter="url(#soft)"/>
+  <path d="M32 10 L33.5 22 L30.5 32 L33 44" stroke="#f5d0fe" stroke-width="0.8" fill="none"/>
+  <path d="M33.5 22 L38 30" stroke="url(#crack)" stroke-width="1" fill="none" opacity="0.7" filter="url(#soft)"/>
+  <!-- tip glint -->
+  <circle cx="32" cy="7.5" r="1.3" fill="#f0abfc" opacity="0.9"/>
+  <circle cx="49.5" cy="38" r="0.9" fill="#eecf8d" opacity="0.75"/>
+  <circle cx="14.5" cy="38" r="0.9" fill="#a78bfa" opacity="0.6"/>
+</svg>
