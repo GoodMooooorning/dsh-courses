@@ -13,12 +13,17 @@ window.__ModuleLoader__.load({
 
 		var name = "priestess-styled-theme";
 		/* 依赖注入：settingsScope（设置绑定）/ slots（设置卡片）/ locale（文案）/
-		   connection + remote（host 设置传输） */
+		   connection + remote（host 设置传输）。
+		   主题核心逻辑（检测/渲染/粒子）不直接依赖这些服务——即使设置服务缺失，
+		   react 惰性降级仍可让核心主题照常（见下方降级逻辑）。 */
 		var inject = ["slots", "locale", "connection", "remote", "settingsScope"];
 		var ASSET = "/arknights-assets/";
 		/* 设置命名空间：settings.yaml 中 arknights-theme: 节 */
 		var SETTINGS_NS = "arknights-theme";
-		var React = require("react");
+		/* React 惰性加载：旧版 dsh 的模块表可能没有 "react"，require 会抛错，
+		   这里捕获后降级为"不注册设置卡片"，主题核心不受影响。 */
+		var React = null;
+		try { React = require("react"); } catch (e) { React = null; }
 
 		var apply = (ctx) => {
 			if (window.__arknightsThemeLoaded) return;
@@ -415,21 +420,26 @@ window.__ModuleLoader__.load({
 			}
 
 			/* ================ 设置页集成（设置 → 插件 → 普瑞赛斯主题） ================ */
+			/* 可选依赖：用 ctx.get() 方法做安全查找（服务缺失返回 undefined，不抛错），
+			   任何服务不可用（旧版 dsh）则 scope 保持 null，主题核心不受影响。 */
 			var scope = null;
 			var scopeUnsub = null;
 			try {
-				scope = ctx.settingsScope.bind({ namespace: SETTINGS_NS });
-				scopeUnsub = scope.subscribe(function () {
-					var snap = scope.getSnapshot();
-					var value = (snap && snap.value) || {};
-					cfgMode = typeof value.mode === "string" ? value.mode : null;
-					cfgExcluded = Array.isArray(value.excluded) ? value.excluded : [];
-					evaluate();
-				});
-				var initSnap = scope.getSnapshot();
-				var initVal = (initSnap && initSnap.value) || {};
-				cfgMode = typeof initVal.mode === "string" ? initVal.mode : null;
-				cfgExcluded = Array.isArray(initVal.excluded) ? initVal.excluded : [];
+				var settingsScopeSvc = ctx.get("settingsScope");
+				if (settingsScopeSvc && typeof settingsScopeSvc.bind === "function") {
+					scope = settingsScopeSvc.bind({ namespace: SETTINGS_NS });
+					scopeUnsub = scope.subscribe(function () {
+						var snap = scope.getSnapshot();
+						var value = (snap && snap.value) || {};
+						cfgMode = typeof value.mode === "string" ? value.mode : null;
+						cfgExcluded = Array.isArray(value.excluded) ? value.excluded : [];
+						evaluate();
+					});
+					var initSnap = scope.getSnapshot();
+					var initVal = (initSnap && initSnap.value) || {};
+					cfgMode = typeof initVal.mode === "string" ? initVal.mode : null;
+					cfgExcluded = Array.isArray(initVal.excluded) ? initVal.excluded : [];
+				}
 			} catch (e) {
 				console.error("[priestess-styled-theme] settingsScope.bind failed:", e);
 				window.__akDebug = window.__akDebug || {};
@@ -575,27 +585,32 @@ window.__ModuleLoader__.load({
 				"saveFailed": "Save failed"
 			};
 
-			/* 注册设置卡片（设置 → 插件） */
+			/* 注册设置卡片（设置 → 插件）——可选增强，依赖 react + settingsScope + slots + locale。
+			   任一缺失（旧版 dsh）则整体跳过，主题核心功能不受影响。 */
 			var cardController = null;
 			try {
-				ctx.effect(function () { return ctx.locale.register(SETTINGS_NS, { zh: LOCALE_ZH, en: LOCALE_EN }); }, "priestess-styled-theme: settings locale");
-				ctx.slots.inject("settings.plugin.item", function* () {
-					if (cardController === null) {
-						if (scope !== null) {
+				var slotsSvc = ctx.get("slots");
+				var localeSvc = ctx.get("locale");
+				if (React === null) {
+					console.info("[priestess-styled-theme] react 模块不可用，跳过设置卡片（主题核心照常）");
+				} else if (!slotsSvc || !localeSvc || scope === null) {
+					console.info("[priestess-styled-theme] slots/locale/settingsScope 服务不可用，跳过设置卡片（主题核心照常）");
+				} else {
+					ctx.effect(function () { return localeSvc.register(SETTINGS_NS, { zh: LOCALE_ZH, en: LOCALE_EN }); }, "priestess-styled-theme: settings locale");
+					slotsSvc.inject("settings.plugin.item", function* () {
+						if (cardController === null) {
 							try { cardController = makeCardController(scope); }
 							catch (err) { console.error("[priestess-styled-theme] card controller failed:", err); }
-						} else {
-							console.error("[priestess-styled-theme] card not registered: settings scope unavailable");
 						}
-					}
-					if (cardController === null) return;
-					yield ctx.slots.register({
-						name: "settings.plugin.item",
-						key: SETTINGS_NS,
-						locale: SETTINGS_NS,
-						inject: function () { return cardController.inject(); }
-					}, ArknightsCard);
-				});
+						if (cardController === null) return;
+						yield slotsSvc.register({
+							name: "settings.plugin.item",
+							key: SETTINGS_NS,
+							locale: SETTINGS_NS,
+							inject: function () { return cardController.inject(); }
+						}, ArknightsCard);
+					});
+				}
 				window.__akDebug = window.__akDebug || {};
 				window.__akDebug.cardRegistered = cardController !== null;
 			} catch (e) {
@@ -649,9 +664,9 @@ window.__ModuleLoader__.load({
 			};
 		};
 
-		/* 注意：不要导出 default 函数——runner 会将函数形式视为"无 inject 声明"，
-		   导致 settingsScope/locale 等依赖服务全部不可用。
-		   用对象形式（exports.apply + exports.inject + exports.name）保证依赖注入。 */
+		/* 兼容新旧 dsh：同时导出 default（旧 runner 的函数形式）与 apply（新 runner 的对象形式）。
+		   inject 已为空数组，函数形式丢失 inject 也无影响（核心功能零依赖）。 */
+		exports.default = apply;
 		exports.apply = apply;
 		exports.name = name;
 		exports.inject = inject;
