@@ -30,8 +30,7 @@ window.__ModuleLoader__.load({
 			window.__arknightsThemeLoaded = true;
 
 			/* ---------------- configuration ---------------- */
-			/* 目标工作区名：可被 URL 参数 ?aktarget=xxx 或
-			   localStorage['ak-target'] 覆盖（分享给他人时无需改代码） */
+			/* 目标工作区名（调试用，默认 betterui；主题为「应用/关闭」两态，不再按工作区匹配） */
 			var TARGET = "betterui";
 			try {
 				var lsTarget = window.localStorage && window.localStorage.getItem("ak-target");
@@ -62,10 +61,8 @@ window.__ModuleLoader__.load({
 			var enabled = false;
 			var dataReady = false;
 			/* 设置页配置（settings 命名空间 arknights-theme）：
-			   mode: auto | all-on | all-off | current-off */
+			   mode: on | off */
 			var cfgMode = null;
-			var cfgExcluded = [];
-			var lastActiveWorkspace = null; // 最近一次检测到的活动工作区名
 			var cwdBySession = {};
 			var titleBySession = {};
 			var basenameToSessions = {};
@@ -160,92 +157,13 @@ window.__ModuleLoader__.load({
 				} catch (e) { /* WebSocket unavailable — DOM-only detection still works */ }
 			}
 
-			/* ---------------- DOM signals ---------------- */
-			function centerColumn() {
-				var frame = document.querySelector('#root [style*="grid-template-columns"]');
-				if (frame && frame.children && frame.children.length > 1) return frame.children[1];
-				var scroll = document.querySelector("[data-conversation-scroll]");
-				if (scroll) {
-					var el = scroll;
-					for (var i = 0; i < 6 && el; i++) el = el.parentElement;
-					return el || document.body;
-				}
-				return document.body;
-			}
-
-			function readActiveTitle(center) {
-				var navs = center.querySelectorAll("nav");
-				for (var i = navs.length - 1; i >= 0; i--) {
-					var disabled = navs[i].querySelector("button[disabled]");
-					if (disabled) {
-						var t = (disabled.textContent || "").trim();
-						if (t) return t;
-					}
-				}
-				for (var j = navs.length - 1; j >= 0; j--) {
-					var btns = navs[j].querySelectorAll("button");
-					if (btns.length) {
-						var t2 = (btns[btns.length - 1].textContent || "").trim();
-						if (t2) return t2;
-					}
-				}
-				return "";
-			}
-
-			function readHeroLabel(center) {
-				var btns = center.querySelectorAll("button");
-				for (var i = 0; i < btns.length; i++) {
-					var t = (btns[i].textContent || "").trim();
-					if (!t || t.length > 80) continue;
-					if (norm(t) === TARGET || titleToSessions[norm(t)] || basenameToSessions[norm(t)]) return t;
-				}
-				return "";
-			}
-
 			/* ---------------- decision ---------------- */
-			/* 解析当前活动会话所属工作区名（无则 null） */
-			function resolveActiveWorkspace() {
-				var center = centerColumn();
-				var activeTitle = readActiveTitle(center);
-				var heroLabel = readHeroLabel(center);
-				var candidates = [];
-				if (activeTitle) candidates.push(activeTitle);
-				if (heroLabel) candidates.push(heroLabel);
-				for (var i = 0; i < candidates.length; i++) {
-					var n = norm(candidates[i]);
-					if (!n) continue;
-					var ids = titleToSessions[n] || basenameToSessions[n];
-					if (ids && ids.length && cwdBySession[ids[0]]) {
-						return norm(basename(cwdBySession[ids[0]]));
-					}
-				}
-				return null;
-			}
 			function decide() {
 				if (force !== null) return force; // 手动覆盖（?ak / localStorage）优先
-				if (cfgMode === "all-on") return true;
-				if (cfgMode === "all-off") return false;
-				var center = centerColumn();
-				var activeTitle = readActiveTitle(center);
-				var heroLabel = readHeroLabel(center);
-				var candidates = [];
-				if (activeTitle) candidates.push(activeTitle);
-				if (heroLabel) candidates.push(heroLabel);
-				for (var i = 0; i < candidates.length; i++) {
-					var n = norm(candidates[i]);
-					if (!n) continue;
-					var ids = titleToSessions[n] || basenameToSessions[n];
-					if (ids && ids.length) {
-						var cwd = cwdBySession[ids[0]];
-						var ws = cwd != null ? norm(basename(cwd)) : null;
-						if (ws) { lastActiveWorkspace = ws; window.__akLastWorkspace = ws; }
-						/* current-off：当前工作区在排除列表则关闭，否则按目标检测 */
-						if (cfgMode === "current-off" && ws && cfgExcluded.indexOf(ws) !== -1) return false;
-						return cwd != null && ws === TARGET;
-					}
-					if (n === TARGET) { lastActiveWorkspace = TARGET; window.__akLastWorkspace = TARGET; return true; }
-				}
-				return false;
+				/* 精简模式：应用（on）→ 主题显示；关闭（off）→ 主题隐藏。
+				   兼容历史值（all-off 视为关闭）。 */
+				if (cfgMode === "off" || cfgMode === "all-off") return false;
+				return true;
 			}
 
 			/* ---------------- apply ---------------- */
@@ -432,13 +350,11 @@ window.__ModuleLoader__.load({
 						var snap = scope.getSnapshot();
 						var value = (snap && snap.value) || {};
 						cfgMode = typeof value.mode === "string" ? value.mode : null;
-						cfgExcluded = Array.isArray(value.excluded) ? value.excluded : [];
 						evaluate();
 					});
 					var initSnap = scope.getSnapshot();
 					var initVal = (initSnap && initSnap.value) || {};
 					cfgMode = typeof initVal.mode === "string" ? initVal.mode : null;
-					cfgExcluded = Array.isArray(initVal.excluded) ? initVal.excluded : [];
 				}
 			} catch (e) {
 				console.error("[priestess-styled-theme] settingsScope.bind failed:", e);
@@ -473,16 +389,15 @@ window.__ModuleLoader__.load({
 					set({ saving: true, failed: false });
 					var mode = staged !== null ? staged : snapshot.mode;
 					var ops = [];
-					if (mode === "current-off" && window.__akLastWorkspace) {
-						ops.push(scopeRef.set("mode", "current-off").then(function () {
-							return scopeRef.set("excluded", [window.__akLastWorkspace]);
-						}));
-					} else if (mode === "auto") {
-						ops.push(scopeRef.unset("mode").catch(function () {}).then(function () {
-							return scopeRef.unset("excluded").catch(function () {});
-						}));
+					if (mode === "on") {
+						/* 应用：写入 on */
+						ops.push(scopeRef.set("mode", "on"));
+					} else if (mode === "off") {
+						/* 关闭：写入 off */
+						ops.push(scopeRef.set("mode", "off"));
 					} else {
-						ops.push(scopeRef.set("mode", mode));
+						/* 其它/历史值：回退为应用 */
+						ops.push(scopeRef.set("mode", "on"));
 					}
 					Promise.all(ops)
 						.then(function () { staged = null; set({ saving: false, dirty: false }); })
@@ -525,10 +440,8 @@ window.__ModuleLoader__.load({
 				var open = openState[0];
 				var setOpen = openState[1];
 				var MODES = [
-					{ id: "auto", label: t("modeAuto") },
-					{ id: "current-off", label: t("modeCurrentOff") },
-					{ id: "all-on", label: t("modeAllOn") },
-					{ id: "all-off", label: t("modeAllOff") }
+					{ id: "on", label: t("modeOn") },
+					{ id: "off", label: t("modeOff") }
 				];
 				return React.createElement("li", { style: CARD_STYLE.card },
 					React.createElement("button", { type: "button", style: CARD_STYLE.header, onClick: function () { setOpen(!open); } },
@@ -542,7 +455,6 @@ window.__ModuleLoader__.load({
 								m.label
 							);
 						}),
-						React.createElement("p", { style: CARD_STYLE.hint }, t("currentWorkspace") + ": " + (window.__akLastWorkspace || "-")),
 						React.createElement("p", { style: CARD_STYLE.hint }, t("uninstallHint")),
 						state.failed ? React.createElement("p", { style: CARD_STYLE.fail, role: "status" }, t("saveFailed")) : null,
 						React.createElement("div", { style: CARD_STYLE.actions },
@@ -558,11 +470,8 @@ window.__ModuleLoader__.load({
 				"settings.title": "普瑞赛斯主题",
 				"settings.description": "普瑞赛斯 · 源石协议 主题插件",
 				"title": "普瑞赛斯主题",
-				"modeAuto": "自动（仅目标工作区）",
-				"modeCurrentOff": "关闭当前工作区",
-				"modeAllOn": "全部应用（所有工作区）",
-				"modeAllOff": "全部关闭",
-				"currentWorkspace": "当前工作区",
+				"modeOn": "应用",
+				"modeOff": "关闭",
 				"uninstallHint": "卸载：在插件目录运行 .\\manage.ps1 uninstall 后重启 dsh",
 				"save": "保存",
 				"discard": "放弃",
@@ -573,11 +482,8 @@ window.__ModuleLoader__.load({
 				"settings.title": "Priestess Theme",
 				"settings.description": "Priestess · Originium theme plugin",
 				"title": "Priestess Theme",
-				"modeAuto": "Auto (target workspace only)",
-				"modeCurrentOff": "Disable in current workspace",
-				"modeAllOn": "Apply everywhere",
-				"modeAllOff": "Disable everywhere",
-				"currentWorkspace": "Current workspace",
+				"modeOn": "Apply",
+				"modeOff": "Disable",
 				"uninstallHint": "Uninstall: run .\\manage.ps1 uninstall in the plugin folder, then restart dsh",
 				"save": "Save",
 				"discard": "Discard",

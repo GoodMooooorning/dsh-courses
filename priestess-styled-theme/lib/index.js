@@ -13,10 +13,9 @@ const inject = ["webServer"];
 
 /** 设置命名空间：settings.yaml 中的 arknights-theme: 节 */
 const SETTINGS_NS = settingsNamespace("arknights-theme");
-/** 主题控制 schema：mode = auto | all-on | all-off | current-off；excluded = 排除的工作区名 */
+/** 主题控制 schema：mode = on | off（应用 / 关闭） */
 const ThemeSettingsSchema = z.object({
-  mode: z.string().default("auto"),
-  excluded: z.array(String).default([])
+  mode: z.string().default("on")
 });
 
 const MIME = {
