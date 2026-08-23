@@ -1,5 +1,5 @@
 # ==========================================================================
-# 普瑞塞斯 · 源石协议 — Arknights theme plugin manager
+# 普瑞赛斯 · 源石协议 — Arknights theme plugin manager
 #
 #   manage.ps1 install    安装并启用插件（需重启 dsh 生效）
 #   manage.ps1 enable     重新启用（移除 disabled）
@@ -47,7 +47,7 @@ function Restore-Empty([string]$s) {
   return $s
 }
 
-Write-Host "=== 普瑞塞斯 · 源石协议 插件管理 ==="
+Write-Host "=== 普瑞赛斯 · 源石协议 插件管理 ==="
 switch ($Action) {
   "install" {
     if (-not (Test-Path $target)) {

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   普瑞塞斯 · 源石协议 — host half: serves the theme assets under
+   普瑞赛斯 · 源石协议 — host half: serves the theme assets under
    /arknights-assets/ so the client plugin never touches the frontend dist
    (survives dsh updates / reinstalls).
    ========================================================================== */

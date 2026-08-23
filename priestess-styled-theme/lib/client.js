@@ -1,5 +1,5 @@
 /* ==========================================================================
-   普瑞塞斯 · 源石协议 — Arknights theme client plugin (hand-written bundle)
+   普瑞赛斯 · 源石协议 — Arknights theme client plugin (hand-written bundle)
    Loaded by the DSH browser module loader as an enabled Loader entry.
    Injects the theme stylesheet + artwork from the host half (/arknights-assets)
    while the ACTIVE session belongs to the "betterui" workspace.
@@ -298,7 +298,7 @@ window.__ModuleLoader__.load({
 				// 左侧：巴别塔完整图像（宽度适配左边栏）
 				mountImg("ak-babel", ASSET + "babel-right.webp");
 				fitBabelWidth();
-				// 右侧：普瑞塞斯（8号）填满右栏
+				// 右侧：普瑞赛斯（8号）填满右栏
 				mountImg("ak-watermark", ASSET + "priestess-right.webp");
 				setupParticles();
 			}
@@ -414,7 +414,7 @@ window.__ModuleLoader__.load({
 				window.__akParticles = { start: start, stop: stop };
 			}
 
-			/* ================ 设置页集成（设置 → 插件 → 普瑞塞斯主题） ================ */
+			/* ================ 设置页集成（设置 → 插件 → 普瑞赛斯主题） ================ */
 			var scope = null;
 			var scopeUnsub = null;
 			try {
@@ -545,9 +545,9 @@ window.__ModuleLoader__.load({
 
 			/* 文案 */
 			var LOCALE_ZH = {
-				"settings.title": "普瑞塞斯主题",
-				"settings.description": "普瑞塞斯 · 源石协议 主题插件",
-				"title": "普瑞塞斯主题",
+				"settings.title": "普瑞赛斯主题",
+				"settings.description": "普瑞赛斯 · 源石协议 主题插件",
+				"title": "普瑞赛斯主题",
 				"modeAuto": "自动（仅目标工作区）",
 				"modeCurrentOff": "关闭当前工作区",
 				"modeAllOn": "全部应用（所有工作区）",
