@@ -37,18 +37,6 @@ window.__ModuleLoader__.load({
 			} catch (e) { /* no URL API */ }
 			window.__akTarget = TARGET;
 
-			/* ---------------- force switch (session-level override) ----------------
-			   URL ?ak=1 -> force ON    ?ak=0 -> force OFF
-			   （仅本页会话有效；正式开关在 设置 → 插件 的「主题开关」，
-			     localStorage 'ak-force' 旧机制已移除，避免压住设置页开关） */
-			var force = null;
-			try {
-				var q = new URLSearchParams(window.location.search);
-				if (q.get("ak") === "1") force = true;
-				else if (q.get("ak") === "0") force = false;
-			} catch (e) { /* no URL API */ }
-			window.__akForce = force;
-
 			/* ---------------- state ---------------- */
 			var enabled = false;
 			var dataReady = false;
@@ -188,9 +176,10 @@ window.__ModuleLoader__.load({
 				return "";
 			}
 
-			/* ---------------- decision ---------------- */
+			/* ---------------- decision ----------------
+			   正式开关在 设置 → 插件 的「主题开关」（enabled）；其次按工作区匹配。
+			   无 URL / localStorage 强制开关——控制唯一入口是设置页。 */
 			function decide() {
-				if (force !== null) return force;
 				if (cfg.enabled === false) return false;
 				if (!dataReady) return false;
 				var center = centerColumn();
