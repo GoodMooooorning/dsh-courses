@@ -223,7 +223,6 @@ html[data-arknights] body::after {
 /* ---- 3. Side-panel artwork (DOM injected by arknights.js) ----------- */
 
 #ak-watermark,
-#ak-babel,
 #ak-river {
   position: fixed;
   z-index: 30;
@@ -233,7 +232,6 @@ html[data-arknights] body::after {
 }
 
 html[data-arknights] #ak-watermark,
-html[data-arknights] #ak-babel,
 html[data-arknights] #ak-river {
   display: block;
 }
@@ -266,17 +264,7 @@ html[data-arknights] #ak-river {
   -webkit-user-drag: none;
 }
 
-#ak-babel img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: left bottom;
-  -webkit-user-drag: none;
-}
-
-/* 右侧：普瑞塞斯（8号），宽度适中防放大模糊 */
-html[data-arknights] #ak-watermark {
+/* 右侧：普瑞塞斯（8号），宽度适中防放大模糊 */html[data-arknights] #ak-watermark {
   right: 0;
   top: -9vh;
   height: calc((100vh - 13vh) * 1.25);
@@ -284,15 +272,6 @@ html[data-arknights] #ak-watermark {
   opacity: 0.6;
   mix-blend-mode: screen;
   filter: saturate(1.06);
-}
-
-/* 左侧：巴别塔完整图像（上部透明露出星河），宽度由 JS 适配左边栏，底部贴网页底部 */
-html[data-arknights] #ak-babel {
-  left: 0;
-  top: -8.75vh;
-  height: calc((100vh - 13vh) * 1.25);
-  width: 280px;
-  opacity: 0.8;
 }
 
 /* floating originium dust canvas */
@@ -310,7 +289,6 @@ html[data-arknights] #ak-particles {
 
 @media (max-width: 720px) {
   html[data-arknights] #ak-watermark { opacity: 0.32; width: min(68vw, 420px); top: -4vh; }
-  html[data-arknights] #ak-babel { opacity: 0.55; width: min(40vw, 260px); top: -4vh; }
 }
 
 /* ---- 4. Selection, focus, scrollbars --------------------------------- */

@@ -1,0 +1,12 @@
+# priestess-styled-theme — the plugin's own Loader row for a dsh profile.
+#
+# Installed as a profile bundle (the dsh 0.1.5+ way):
+#   `dsh plugin --profile web add <this-package-or-path>`
+# which adds the package to the profile's `dsh.profile.bundles` and applies this
+# patch, so no harness file is ever hand-edited.
+#
+# On a machine without pnpm, `manage.ps1 install` performs the same two edits
+# (profile package.json + this bundle) by hand.
+- insert:
+    - id: priestess-styled-theme
+      name: priestess-styled-theme
