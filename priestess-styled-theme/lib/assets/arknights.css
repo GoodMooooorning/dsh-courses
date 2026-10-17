@@ -192,18 +192,24 @@ html[data-arknights] body {
 }
 
 html[data-arknights] body::before {
-  /* 黑色基底 + 暗紫星空点缀（最上层）+ 紫色流光光晕 */
+  /* 黑色基底 + 暗紫星野 + 紫色流光光晕
+     星野层铺满整个窗口，并随窗口等比例缩放：窗口化（非最大化）时同样铺满，
+     不再以小瓦片平铺，所以背景在任意窗口尺寸下都覆盖完整。 */
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    url("/arknights-assets/starfield.svg") repeat,
+  background-image:
+    url("/arknights-assets/starfield.svg"),
     radial-gradient(1100px 760px at 82% -10%, rgba(139, 92, 246, 0.18), transparent 62%),
     radial-gradient(900px 680px at -12% 108%, rgba(139, 92, 246, 0.1), transparent 60%),
     radial-gradient(760px 520px at 55% 120%, rgba(124, 92, 255, 0.14), transparent 62%),
     linear-gradient(180deg, #020204 0%, #03040a 50%, #05060f 100%);
+  background-repeat: no-repeat;
+  /* 星野等比放大到覆盖窗口（窗口变化时铺展面积跟着变），其余渐变层保持原尺寸 */
+  background-size: cover, auto, auto, auto, auto;
+  background-position: center, center, center, center, center;
 }
 
 /* thin civilight hairline across the very top of the app */
@@ -259,8 +265,9 @@ html[data-arknights] #ak-river {
   display: block;
   width: 100%;
   height: 100%;
+  /* 立绘保持自身比例、大小不变（contain 不会拉伸/裁切），并始终贴住屏幕右侧 */
   object-fit: contain;
-  object-position: center;
+  object-position: right center;
   -webkit-user-drag: none;
 }
 

@@ -6,7 +6,7 @@
 > 以 **DSH 官方客户端插件机制** 实现：不改动任何安装文件。
 > dsh 升级 / 重装后重新 `.\manage.ps1 install` 即可继续使用。
 
-**当前版本：v2.0.1**（适配 dsh `0.1.5+`）
+**当前版本：v2.1.0**（适配 dsh `0.1.5` ~ `0.2.x`：网页版与桌面客户端）
 
 ---
 
@@ -14,6 +14,7 @@
 
 | 版本 | 摘要 |
 |---|---|
+| **v2.1.0** | 支持**桌面客户端**（dsh 0.2.x，新增 `desktop` profile 安装）；星野随窗口等比铺满；立绘保持比例、始终贴右 |
 | **v2.0.1** | 修复浏览器端无限递归崩溃（`Maximum call stack size exceeded`）+ 引入 fail-soft 与回归测试 |
 | **v2.0.0** | **适配新版 dsh（0.1.5+）**：修复「启用插件后 dsh 无法启动」、改用 profile bundle 安装、重写启动逻辑 |
 | v1.3.2 | 移除左侧巴别塔图像 |
@@ -22,6 +23,43 @@
 | v1.2.x | 工作区跟随显示（已于 v2.0.0 移除） |
 | v1.1.x | 设置卡片 + `react` 惰性加载兼容 |
 | v1.0.0 | 初始版本 |
+
+---
+
+## 🖥 桌面客户端（DSH Desktop）
+
+桌面客户端和网页版**共用同一个 `DSH_HOME`**（默认 `C:\Users\28626\.dsh`），但跑的是**独立的 `desktop` profile**，
+所以要单独登记一次：
+
+```powershell
+cd priestess-styled-theme
+.\manage.ps1 install -Profile desktop
+```
+
+然后**重启桌面客户端**（profile 的变更只在启动时生效）。
+
+桌面端目前是 dsh `0.2.x`，与网页版的差异：
+
+| 能力 | 网页版（dsh 0.1.x） | 桌面客户端（dsh 0.2.x） |
+|---|---|---|
+| 主题渲染（立绘 / 星野 / 星河 / 粒子） | ✅ | ✅ |
+| 设置页卡片「设置 → 插件 → 普瑞赛斯主题」 | ✅ | ❌ 0.2 起前端移除了 `settings.plugin.item` 槽位，卡片无处注册 |
+| 开关持久化 | `settings.yaml` 的 `arknights-theme` 节 | 插件的 **`Config`**（写在 profile 的 `cordis.patch.yml`） |
+
+桌面端要持久地开 / 关主题，编辑 `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`：
+
+```yaml
+- id: priestess-styled-theme
+  disabled: false
+  config:
+    mode: on        # on = 应用，off = 关闭
+```
+
+改完重启客户端即生效（已在 dsh `0.2.0-rc.2` 上实测：`mode: off` 会让
+`GET /plugins/priestess-styled-theme/config` 返回 `{"mode":"off"}`）。
+
+> 桌面端没有地址栏，`?ak=` 参数用不上；临时切换可在开发者工具里执行
+> `localStorage.setItem('ak-force','0')`（`'1'` 或删除即恢复）。
 
 ---
 
@@ -141,14 +179,28 @@ host 端插件加载失败 → dsh 启动流程中断 → 表现就是「一启�
 
 | 元素 | 说明 |
 |---|---|
-| 右侧 | 普瑞赛斯立绘水印（若隐若现，贴满右栏） |
-| 背景 | 黑色基底 + 暗紫星野 + 黑紫星河（SVG 矢量）+ 紫色流光光晕 |
+| 右侧 | 普瑞赛斯立绘水印（保持自身比例与大小，始终贴住屏幕右侧） |
+| 背景 | 黑色基底 + 暗紫星野（随窗口等比放大铺满）+ 黑紫星河（SVG 矢量）+ 紫色流光光晕 |
 | 动效 | 悬浮源石尘粒（canvas，尊重系统「减少动态效果」时自动停止） |
 | 细节 | 紫色输入光标、紫色选中态、定制滚动条、源石图标 favicon |
 | 切换 | **设置 → 插件 → 普瑞赛斯主题**：`应用` / `关闭`，持久保存 |
 | 强制覆盖 | 地址栏 `?ak=1` / `?ak=0`，或 `localStorage['ak-force']` |
 
 **零 token 消耗**：插件只做浏览器本地操作（DOM / Canvas / 本地 HTTP），不调用任何大模型。
+
+### 窗口化时的背景行为
+
+窗口（含桌面客户端非最大化状态）被拖动缩放时：
+
+| 层 | 行为 |
+|---|---|
+| 星野（`starfield.svg`） | 不再按 240px 小瓦片平铺，改为**等比放大到覆盖整个窗口**（`background-size: cover`），所以窗口多大背景就铺多大 |
+| 普瑞赛斯立绘 | **比例与大小不变**（`object-fit: contain` 不拉伸也不裁切），并始终贴住屏幕右侧 |
+| 星河 / 流光 / 粒子 | 仍按视口定位，随窗口自适应 |
+
+如果你更喜欢原来「小星星平铺」的观感，把 `lib/assets/arknights.css` 里
+`html[data-arknights] body::before` 的 `background-size` 首项从 `cover` 改回 `240px 240px`、
+`background-repeat` 改成 `repeat` 即可。
 
 ---
 
@@ -338,9 +390,11 @@ priestess-styled-theme/
 
 ---
 
-## ✅ 发版前的验证记录（v2.0.1）
+## ✅ 发版前的验证记录（v2.1.0）
 
-改动都用**隔离的 `DSH_HOME` 沙箱**启动真实 dsh 验证，没有动到正在使用的实例：
+改动都用**隔离的 `DSH_HOME` 沙箱**启动真实 dsh 验证，没有动到正在使用的实例。
+
+### 网页版（dsh 0.1.5-rc.1）
 
 - `--dump-config` 组合 profile：插件条目正常出现，无「多个 Loader 源」冲突；
 - 沙箱启动：host 路由 `GET /config` → `200 {"mode":"on"}`、`/arknights-assets/arknights.css` → 200 且 MIME 正确；
@@ -348,6 +402,19 @@ priestess-styled-theme/
 - 设置写入链路：`PATCH off → on` 持久化进 `settings.yaml`，非法值 400，跨源 Origin 403；
 - 取**沙箱实际下发的 bundle 字节**喂给回归测试 → 5 项全过；
 - 禁用后确认条目从浏览器插件清单消失（55 → 54 条），确认「禁用」路径本身有效。
+
+### 桌面客户端（dsh 0.2.0-rc.2）
+
+桌面端用的是 app 内自带的那份 dsh，版本与网页版不同，所以单独验证了一遍：
+
+- 用桌面端自己的运行时（`DeepSeek Harness.exe` 以 Node 身份）启动沙箱实例：
+  `GET /config` → `200 {"mode":"on"}`、`arknights.css` → 200、立绘 → 200；
+- 引导清单 66 条，本插件行存在；下发的 bundle 9 项检查全过（含「只有 1 个 `function apply`」）；
+- 桌面端 **`ctx.settings.register()` 已不存在**，主题开关改由插件 `Config` 驱动 ——
+  实测按 `config: { mode: off }` 配置后 `/config` 返回 `{"mode":"off"}`；
+- 桌面端前端**已移除 `settings.plugin.item` 槽位**（遍历 asar 内全部 client bundle 确认），
+  因此桌面端不显示内置开关卡片，属预期；
+- 回归测试：`node --test tests/` → 5/5 通过。
 
 ---
 

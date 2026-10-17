@@ -136,9 +136,36 @@ function Normalize-Yml([string]$s) {
   return $s
 }
 function Set-DisableRow([string]$s, [bool]$disabled) {
-  $s = [regex]::Replace($s, "(?m)^- id:\s*'?$([regex]::Escape($pluginName))'?\s*\r?\n\s+disabled:\s*(true|false)[^\r\n]*\r?\n?", "")
+  # 行级改写：只翻转本插件条目自己的 disabled 字段，保留同一块里的 name / config
+  # 等字段（否则用户写进去的 config: { mode: off } 会被静默丢掉）。
+  # 同一 id 出现多条时（例如手动编辑或第三方工具追加过）合并为一条。
   $state = if ($disabled) { "true" } else { "false" }
-  return $s.TrimEnd() + "`n- id: $pluginName`n  disabled: $state`n"
+  $lines = $s -split "`r?`n"
+  $out = New-Object System.Collections.Generic.List[string]
+  $found = $false
+  $idPattern = "^-\s*id:\s*'?$([regex]::Escape($pluginName))'?\s*$"
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -notmatch $idPattern) { $out.Add($lines[$i]); continue }
+    # 收集该条目的缩进子行
+    $block = New-Object System.Collections.Generic.List[string]
+    $j = $i + 1
+    while ($j -lt $lines.Count -and $lines[$j] -match "^\s+\S") { $block.Add($lines[$j]); $j++ }
+    $i = $j - 1
+    if ($found) { continue }   # 重复条目直接丢弃
+    $found = $true
+    $out.Add("- id: $pluginName")
+    $wrote = $false
+    foreach ($b in $block) {
+      if ($b -match "^\s+disabled:\s*(true|false)\s*$") {
+        if (-not $wrote) { $out.Add("  disabled: $state"); $wrote = $true }
+        continue
+      }
+      $out.Add($b)
+    }
+    if (-not $wrote) { $out.Add("  disabled: $state") }
+  }
+  if (-not $found) { $out.Add("- id: $pluginName"); $out.Add("  disabled: $state") }
+  return ($out -join "`n").TrimEnd() + "`n"
 }
 
 Write-Host "=== 普瑞赛斯 · 源石协议 插件管理 ==="
