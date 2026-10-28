@@ -298,6 +298,31 @@ html[data-arknights] #ak-particles {
   html[data-arknights] #ak-watermark { opacity: 0.32; width: min(68vw, 420px); top: -4vh; }
 }
 
+/* ---- 3b. 手机 / 平板竖屏：立绘整幅铺满背景 -----------------------------
+   远端用手机竖屏浏览时，右侧水印只有 44vw 宽、又带 screen 混色，看着几乎等于没有。
+   这里改成整屏铺满：容器占满视口（inset:0），图片用 cover 等比放大到覆盖整屏，
+   溢出的部分从左右裁掉 —— 立绘的高（头到身）完整保留，人像横跨整个屏幕。
+   想更淡就把 opacity 调小；想让人像更居中可把 object-position 改成 60% center。 */
+@media (orientation: portrait) and (max-width: 900px) {
+  html[data-arknights] #ak-watermark {
+    inset: 0;
+    width: auto;
+    height: auto;
+    opacity: 0.55;
+    filter: saturate(1.04);
+  }
+  #ak-watermark img {
+    /* 竖屏铺满：等比放大到覆盖整屏，左右裁切，纵向完整 */
+    object-fit: cover;
+    object-position: center;
+  }
+}
+
+/* 竖屏且很矮（老机型 / 小屏平板）时稍微压暗，避免压字 */
+@media (orientation: portrait) and (max-width: 900px) and (max-height: 640px) {
+  html[data-arknights] #ak-watermark { opacity: 0.42; }
+}
+
 /* ---- 4. Selection, focus, scrollbars --------------------------------- */
 
 html[data-arknights] ::selection {

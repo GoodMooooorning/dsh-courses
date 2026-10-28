@@ -6,7 +6,7 @@
 > 以 **DSH 官方客户端插件机制** 实现：不改动任何安装文件。
 > dsh 升级 / 重装后重新 `.\manage.ps1 install` 即可继续使用。
 
-**当前版本：v2.1.0**（适配 dsh `0.1.5` ~ `0.2.x`：网页版与桌面客户端）
+**当前版本：v2.2.0**（适配 dsh `0.1.5` ~ `0.2.x`：网页版、桌面客户端、手机竖屏）
 
 ---
 
@@ -14,6 +14,7 @@
 
 | 版本 | 摘要 |
 |---|---|
+| **v2.2.0** | **手机竖屏**时立绘改为**整幅铺满背景**（等比 `cover`，纵向完整、左右裁切）；小屏矮机型自动压暗 |
 | **v2.1.0** | 支持**桌面客户端**（dsh 0.2.x，新增 `desktop` profile 安装）；星野随窗口等比铺满；立绘保持比例、始终贴右 |
 | **v2.0.1** | 修复浏览器端无限递归崩溃（`Maximum call stack size exceeded`）+ 引入 fail-soft 与回归测试 |
 | **v2.0.0** | **适配新版 dsh（0.1.5+）**：修复「启用插件后 dsh 无法启动」、改用 profile bundle 安装、重写启动逻辑 |
@@ -181,9 +182,11 @@ host 端插件加载失败 → dsh 启动流程中断 → 表现就是「一启�
 |---|---|
 | 右侧 | 普瑞赛斯立绘水印（保持自身比例与大小，始终贴住屏幕右侧） |
 | 背景 | 黑色基底 + 暗紫星野（随窗口等比放大铺满）+ 黑紫星河（SVG 矢量）+ 紫色流光光晕 |
+| **手机竖屏** | 立绘改为**整幅铺满背景**（等比 `cover`，纵向完整、左右裁切）；横屏 / 桌面不受影响 |
 | 动效 | 悬浮源石尘粒（canvas，尊重系统「减少动态效果」时自动停止） |
 | 细节 | 紫色输入光标、紫色选中态、定制滚动条、源石图标 favicon |
-| 切换 | **设置 → 插件 → 普瑞赛斯主题**：`应用` / `关闭`，持久保存 |
+| 切换（网页版） | **设置 → 插件 → 普瑞赛斯主题**：`应用` / `关闭`，持久保存 |
+| 切换（桌面端） | 插件 `Config` 的 `mode`（写在 profile 的 `cordis.patch.yml`） |
 | 强制覆盖 | 地址栏 `?ak=1` / `?ak=0`，或 `localStorage['ak-force']` |
 
 **零 token 消耗**：插件只做浏览器本地操作（DOM / Canvas / 本地 HTTP），不调用任何大模型。
@@ -195,12 +198,26 @@ host 端插件加载失败 → dsh 启动流程中断 → 表现就是「一启�
 | 层 | 行为 |
 |---|---|
 | 星野（`starfield.svg`） | 不再按 240px 小瓦片平铺，改为**等比放大到覆盖整个窗口**（`background-size: cover`），所以窗口多大背景就铺多大 |
-| 普瑞赛斯立绘 | **比例与大小不变**（`object-fit: contain` 不拉伸也不裁切），并始终贴住屏幕右侧 |
+| 普瑞赛斯立绘（横屏 / 桌面） | **比例与大小不变**（`object-fit: contain` 不拉伸也不裁切），并始终贴住屏幕右侧 |
+| 普瑞赛斯立绘（**竖屏 / 手机**） | **整幅铺满背景**（`object-fit: cover`）：等比放大到覆盖整屏，纵向完整、左右裁切，人像横跨整个屏幕 |
 | 星河 / 流光 / 粒子 | 仍按视口定位，随窗口自适应 |
 
 如果你更喜欢原来「小星星平铺」的观感，把 `lib/assets/arknights.css` 里
 `html[data-arknights] body::before` 的 `background-size` 首项从 `cover` 改回 `240px 240px`、
 `background-repeat` 改成 `repeat` 即可。
+
+### 手机竖屏（远端浏览）
+
+用手机竖屏访问同一个地址时，立绘会自动切成**整屏铺满**（媒体查询
+`(orientation: portrait) and (max-width: 900px)`），不再只是右侧一条窄水印。
+
+想微调，改 `lib/assets/arknights.css` 里的三处即可 —— 改完**刷新手机页面**就生效（资源是每次请求读盘的，不用重启 dsh）：
+
+| 想改什么 | 改哪里 |
+|---|---|
+| 人像更亮 / 更淡 | `#ak-watermark { opacity: 0.55 }`（小屏矮机型另有 `0.42` 一档） |
+| 人像偏左 / 偏右 | `#ak-watermark img { object-position: center }` → 例如 `60% center` |
+| 整屏铺满改成「完整不裁切」 | `object-fit: cover` → `contain`（会上下留黑边） |
 
 ---
 
@@ -246,6 +263,9 @@ dsh plugin --profile web add <本插件目录或包名>
 ---
 
 ## ⚙️ 设置页控制
+
+> **仅网页版（dsh 0.1.x）有这张卡片。** 桌面客户端（dsh 0.2.x）前端已移除
+> `settings.plugin.item` 槽位，开关改为插件 `Config`，见上面「🖥 桌面客户端」一节。
 
 **设置 → 插件 → 普瑞赛斯主题**，展开卡片选择状态并保存：
 
@@ -294,7 +314,8 @@ arknights-theme: { mode: on }
 ## 🧩 工作原理
 
 - **host 端**（`lib/index.js`）
-  - `ctx.settings.register("arknights-theme", Schema, { base, applies: "live" })` 注册设置命名空间；
+  - `ctx.settings.register("arknights-theme", Schema, { base, applies: "live" })` 注册设置命名空间
+    （dsh 0.2.x 已无此方法，此时降级为进程内作用域，开关改读插件 `Config`）；
   - `exact` 路由 `GET/PATCH /plugins/priestess-styled-theme/config` 作为浏览器的读写通道；
   - `prefix` 路由 `/arknights-assets/*` 伺服主题资源（每次请求读盘，所以改 CSS / 图片只需刷新浏览器）。
   - 只注册 `exact` 路由是有意为之：`/plugins` 前缀归 client-modules 的 bundle 路由所有，
@@ -311,10 +332,11 @@ arknights-theme: { mode: on }
 
 ## 🔒 版本兼容性
 
-| dsh 版本 | 安装方式 | 说明 |
-|---|---|---|
-| **0.1.5+（新版）** | `.\manage.ps1 install` | 插件作为 profile bundle 组合，推荐 |
-| 更早版本 | `.\manage.ps1 install -Legacy` | 回退到 `cordis.patch.yml` insert |
+| dsh 版本 | 形态 | 安装方式 | 能力 |
+|---|---|---|---|
+| **0.1.5 ~ 0.1.x** | 网页版 `dsh web` | `.\manage.ps1 install` | 主题 + 设置页卡片（写入 `settings.yaml`） |
+| **0.2.x** | 网页版 / **桌面客户端** | `.\manage.ps1 install -Profile web\|desktop` | 主题完整；0.2 起 `settings.register` 与 `settings.plugin.item` 已移除 → 开关走插件 `Config`，无卡片 |
+| 早于 0.1.5 | 任意 | `.\manage.ps1 install -Legacy` | 回退到 `cordis.patch.yml` insert |
 
 客户端侧保留 `react` 惰性加载（`try { require("react") } catch`）：
 即使模块表缺少 `react`，也只会降级为「无设置卡片」，主题渲染不受影响。
@@ -374,9 +396,15 @@ priestess-styled-theme/
 
 **Q：主题没出现？**
 - 确认**重启了 dsh**（不是只刷新浏览器），并 `Ctrl+Shift+R` 强制刷新。
-- 「设置 → 插件 → 普瑞赛斯主题」确认选择的是 **应用**。
+- 网页版：「设置 → 插件 → 普瑞赛斯主题」确认选择的是 **应用**。
+- 桌面端：没有这张卡片，检查 profile 的 `config: { mode: on }`（或先删掉该行用默认值）。
 - 控制台执行 `window.__priestessTheme` 查看 `mode` / `enabled` / `force`。
 - 若 `force` 不是 `null`，说明被 `?ak=` 或 `localStorage['ak-force']` 覆盖了。
+
+**Q：手机上背景只有右侧一小条，没有铺满？**
+- 升级到 **v2.2.0**：竖屏（`orientation: portrait` 且宽 ≤ 900px）会自动切成整幅铺满。
+- 只改了 CSS，所以**刷新手机页面**即可生效（资源每次请求读盘），不用重启 dsh。
+- 亮度 / 位置 / 是否裁切，见上面「手机竖屏（远端浏览）」一节的单行调整表。
 
 **Q：改了 CSS 或图片，怎么生效？**
 - `lib/assets/*` 是每次请求读盘的，刷新浏览器即可；`lib/client.js` 改动需重启 dsh
@@ -390,7 +418,7 @@ priestess-styled-theme/
 
 ---
 
-## ✅ 发版前的验证记录（v2.1.0）
+## ✅ 发版前的验证记录（v2.2.0）
 
 改动都用**隔离的 `DSH_HOME` 沙箱**启动真实 dsh 验证，没有动到正在使用的实例。
 
@@ -415,6 +443,18 @@ priestess-styled-theme/
 - 桌面端前端**已移除 `settings.plugin.item` 槽位**（遍历 asar 内全部 client bundle 确认），
   因此桌面端不显示内置开关卡片，属预期；
 - 回归测试：`node --test tests/` → 5/5 通过。
+
+### v2.2.0 手机竖屏（CSS-only）
+
+这次只改了样式表，不动 JS 与 host 端，因此不需要重装或重启：
+
+- CSS 语法校验：花括号配平（38/38），三条媒体查询按顺序生效；
+- 生效方式：资源路由**每次请求读盘**且带 `cache-control: no-cache`，
+  所以手机端**刷新页面**即可看到，无需重启 dsh；
+- 媒体查询条件 `(orientation: portrait) and (max-width: 900px)`，
+  横屏 / 桌面不受影响（仍走原来的右侧贴边规则）；
+- ⚠️ 真机竖屏的视觉效果我这边无法截图验证，请以手机实际渲染为准；
+  亮度、居中、是否裁切这三项都在 README 上一节给出了单行调整位置。
 
 ---
 
